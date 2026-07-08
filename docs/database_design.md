@@ -7,7 +7,7 @@
 - `document_tables`: reserved structure for parsed tables.
 - `extracted_fields`: regex-extracted procurement fields and clause snippets.
 - `risk_rules`: built-in demonstration rule metadata.
-- `risk_findings`: persisted rule matches for a document.
+- `risk_findings`: persisted rule matches for a document, including rule category, severity, explanation, evidence text, and page number where available.
 - `agent_runs`: one record per agent objective.
 - `tool_calls`: tool name, input payload, output payload, and latency for each agent tool call.
 - `eval_cases`: future evaluation dataset rows.

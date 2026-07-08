@@ -61,6 +61,9 @@ export default function RiskPage() {
             <article key={`${finding.rule_name}-${index}`} className="panel p-4">
               <div className="flex flex-wrap items-center gap-3">
                 <StatusBadge value={finding.severity} />
+                <span className="rounded-full border border-line px-2 py-1 text-xs font-black uppercase tracking-[0.08em] text-steel">
+                  {finding.category.replaceAll("_", " ")}
+                </span>
                 <div className="font-black">{finding.rule_name}</div>
                 {finding.page_number ? <span className="text-sm font-bold text-steel">Page {finding.page_number}</span> : null}
               </div>

@@ -4,45 +4,55 @@ from collections.abc import Callable
 BUILT_IN_RULES = [
     {
         "name": "Payment period longer than 90 days",
+        "category": "payment_terms",
         "severity": "high",
         "description": "Flags payment periods that exceed 90 days after invoice, acceptance, or delivery.",
     },
     {
         "name": "Acceptance criteria are vague or missing",
+        "category": "acceptance",
         "severity": "medium",
         "description": "Flags acceptance wording that is subjective or absent.",
     },
     {
         "name": "Liability clause only constrains one party",
+        "category": "liability",
         "severity": "medium",
         "description": "Flags liability wording that appears to limit only supplier or contractor liability.",
     },
     {
         "name": "Termination condition is unclear",
+        "category": "termination",
         "severity": "medium",
         "description": "Flags missing or vague termination rights and triggers.",
     },
     {
         "name": "Bid deadline and opening time appear inconsistent",
+        "category": "schedule",
         "severity": "medium",
         "description": "Flags when bid deadline and opening time are both present and look inconsistent.",
     },
     {
         "name": "Qualification requirement appears overly specific",
+        "category": "qualification",
         "severity": "low",
         "description": "Flags requirements that may be tailored to one vendor or brand.",
     },
     {
         "name": "Scoring standard is not quantified",
+        "category": "scoring",
         "severity": "medium",
         "description": "Flags scoring language without clear numeric weights or points.",
     },
     {
         "name": "Missing dispute resolution clause",
+        "category": "dispute_resolution",
         "severity": "high",
         "description": "Flags documents without arbitration, jurisdiction, court, mediation, or dispute wording.",
     },
 ]
+
+RULE_METADATA_BY_NAME = {rule["name"]: rule for rule in BUILT_IN_RULES}
 
 
 def check_risk_rules(document_id: int, pages: list[dict]) -> list[dict]:
@@ -74,6 +84,7 @@ def _finding(
     return {
         "document_id": document_id,
         "rule_name": rule_name,
+        "category": RULE_METADATA_BY_NAME.get(rule_name, {}).get("category", "general"),
         "severity": severity,
         "explanation": explanation,
         "evidence_text": evidence_text,

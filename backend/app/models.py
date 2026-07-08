@@ -93,6 +93,7 @@ class RiskFinding(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     document_id: Mapped[int] = mapped_column(ForeignKey("documents.id"), index=True)
     rule_name: Mapped[str] = mapped_column(String(160), nullable=False)
+    category: Mapped[str] = mapped_column(String(80), nullable=False, default="general")
     severity: Mapped[str] = mapped_column(String(30), nullable=False)
     explanation: Mapped[str] = mapped_column(Text, nullable=False)
     evidence_text: Mapped[str | None] = mapped_column(Text, nullable=True)

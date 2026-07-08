@@ -43,6 +43,7 @@ export type QAResponse = {
 export type RiskFinding = {
   document_id: number;
   rule_name: string;
+  category: string;
   severity: "low" | "medium" | "high";
   explanation: string;
   evidence_text: string | null;

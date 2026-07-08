@@ -29,7 +29,8 @@ def init_db(engine: Engine, settings: Settings | None = None) -> None:
 
 def ensure_runtime_schema(engine: Engine, settings: Settings) -> None:
     inspector = inspect(engine)
-    if "document_chunks" not in inspector.get_table_names():
+    table_names = inspector.get_table_names()
+    if "document_chunks" not in table_names:
         return
     existing_columns = {column["name"] for column in inspector.get_columns("document_chunks")}
     metadata_columns = {
@@ -37,12 +38,21 @@ def ensure_runtime_schema(engine: Engine, settings: Settings) -> None:
         "embedding_model": "VARCHAR(160)",
         "embedding_dimension": "INTEGER",
     }
+    risk_finding_columns = (
+        {column["name"] for column in inspector.get_columns("risk_findings")}
+        if "risk_findings" in table_names
+        else set()
+    )
     with engine.begin() as connection:
         for column_name, column_type in metadata_columns.items():
             if column_name not in existing_columns:
                 connection.execute(
                     text(f"ALTER TABLE document_chunks ADD COLUMN {column_name} {column_type}")
                 )
+        if "risk_findings" in table_names and "category" not in risk_finding_columns:
+            connection.execute(
+                text("ALTER TABLE risk_findings ADD COLUMN category VARCHAR(80) DEFAULT 'general' NOT NULL")
+            )
         if engine.dialect.name == "postgresql":
             connection.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
             connection.execute(

@@ -57,3 +57,32 @@ def test_agent_run_records_tool_calls_for_question(tmp_path, monkeypatch):
     trace = client.get("/api/agent/runs")
     assert trace.status_code == 200
     assert trace.json()["items"][0]["tool_calls"][0]["tool_name"] == "evidence_search_tool"
+
+
+def test_risk_check_returns_rule_categories(tmp_path, monkeypatch):
+    monkeypatch.setenv("DATABASE_URL", f"sqlite:///{tmp_path / 'bidguard.db'}")
+    monkeypatch.setenv("UPLOAD_DIR", str(tmp_path / "uploads"))
+    client = TestClient(create_app())
+
+    seed = client.post(
+        "/api/dev/seed-text-document",
+        json={
+            "title": "Risk Category Tender",
+            "pages": [
+                {
+                    "page_number": 1,
+                    "text": "Payment terms require payment within 120 days after invoice. Acceptance criteria are subject to purchaser satisfaction.",
+                }
+            ],
+        },
+    )
+    assert seed.status_code == 201
+
+    response = client.post("/api/risk-check", json={"document_id": seed.json()["id"]})
+
+    assert response.status_code == 200
+    findings = response.json()["findings"]
+    assert findings
+    assert {finding["category"] for finding in findings}
+    payment = next(finding for finding in findings if finding["rule_name"] == "Payment period longer than 90 days")
+    assert payment["category"] == "payment_terms"
