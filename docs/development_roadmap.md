@@ -23,6 +23,14 @@
 - Small JSON eval runner.
 - Frontend evidence/trace metadata display.
 
+## Phase 2.2 Included
+
+- PostgreSQL pgvector smoke verification script.
+- Safe pgvector init SQL for Docker bootstrap.
+- Default pgvector dimension aligned with local deterministic embeddings.
+- Eval output with retrieval method, average score, provider mode, and database mode.
+- Documentation for SQLite fallback, PostgreSQL pgvector mode, and optional real provider validation.
+
 ## Next Phase
 
 - Add more realistic public-document eval cases.

@@ -51,10 +51,28 @@ LLM_PROVIDER=local_fake
 Optional PostgreSQL:
 
 ```bash
+# from the project root
 docker compose up -d postgres
 ```
 
-Then set:
+For local pgvector verification without external API keys:
+
+```bash
+cd backend
+DATABASE_URL=postgresql+psycopg://bidguard:bidguard@localhost:5432/bidguard \
+EMBEDDING_PROVIDER=local \
+EMBEDDING_DIMENSION=64 \
+LLM_PROVIDER=local_fake \
+.venv/bin/alembic upgrade head
+
+DATABASE_URL=postgresql+psycopg://bidguard:bidguard@localhost:5432/bidguard \
+EMBEDDING_PROVIDER=local \
+EMBEDDING_DIMENSION=64 \
+LLM_PROVIDER=local_fake \
+.venv/bin/python scripts/smoke_pgvector.py
+```
+
+For a real OpenAI-compatible embedding provider, set these before the first PostgreSQL migration or before the app creates the `embedding_vector` column:
 
 ```text
 DATABASE_URL=postgresql+psycopg://bidguard:bidguard@localhost:5432/bidguard
@@ -65,7 +83,16 @@ EMBEDDING_MODEL=text-embedding-3-small
 EMBEDDING_DIMENSION=1536
 ```
 
-For PostgreSQL, pgvector is enabled by `docker-compose.yml` and the Alembic/runtime DDL adds an optional `embedding_vector` column. SQLite remains the default and stores embeddings in JSON.
+Optional guarded LLM synthesis uses:
+
+```text
+LLM_PROVIDER=openai_compatible
+LLM_API_KEY=...
+LLM_BASE_URL=https://api.openai.com/v1
+LLM_MODEL=gpt-4.1-mini
+```
+
+For PostgreSQL, pgvector is enabled by `docker-compose.yml` and the Alembic/runtime DDL adds an optional `embedding_vector` column. The vector dimension must match `EMBEDDING_DIMENSION`; if you change dimensions after creating the column, recreate the local Postgres volume or migrate the column intentionally. SQLite remains the default and stores embeddings in JSON.
 
 ## Frontend Setup
 
@@ -117,9 +144,20 @@ cd backend
 .venv/bin/python -m app.evaluation.run_eval
 ```
 
+Run the pgvector smoke verification after starting PostgreSQL:
+
+```bash
+cd backend
+DATABASE_URL=postgresql+psycopg://bidguard:bidguard@localhost:5432/bidguard \
+EMBEDDING_PROVIDER=local \
+EMBEDDING_DIMENSION=64 \
+LLM_PROVIDER=local_fake \
+.venv/bin/python scripts/smoke_pgvector.py
+```
+
 ## Evidence-First RAG Behavior
 
-During ingestion, BidGuard AI chunks parsed text and stores an embedding for each chunk. During Q&A it retrieves evidence with hybrid keyword/vector scoring. If evidence is weak or missing, the backend skips synthesis and returns:
+During ingestion, BidGuard AI chunks parsed text and stores an embedding for each chunk. SQLite stores JSON embeddings and uses `hybrid_fallback` retrieval. PostgreSQL stores JSON embeddings plus `embedding_vector` and uses `pgvector` retrieval when the vector column is available. If evidence is weak or missing, the backend skips synthesis and returns:
 
 ```text
 The uploaded documents do not contain enough evidence to answer this question reliably.

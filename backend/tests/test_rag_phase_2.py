@@ -1,6 +1,16 @@
 from fastapi.testclient import TestClient
 
+from app.config import Settings
 from app.evaluation.metrics import score_eval_case
+from app.evaluation.observability import (
+    database_mode_label,
+    summarize_answer_observability,
+)
+from app.evaluation.pgvector_smoke import (
+    database_url_is_postgres,
+    embedding_validation_status,
+    llm_validation_status,
+)
 from app.main import create_app
 from app.services.embeddings import LocalEmbeddingProvider, cosine_similarity
 from app.services.llm import DeterministicLLMProvider, guarded_synthesize_answer
@@ -167,3 +177,39 @@ def test_eval_metrics_score_retrieval_answer_and_tool_calls():
     assert result["evidence_page_hit"] is True
     assert result["answer_keyword_hit"] is True
     assert result["tool_call_hit"] is True
+
+
+def test_eval_observability_reports_retrieval_scores_and_modes():
+    observability = summarize_answer_observability(
+        {
+            "answer": "Based on Tender A page 1, the bid deadline is 30 July 2026.",
+            "evidence": [
+                {"page_number": 1, "score": 0.8, "retrieval_method": "pgvector"},
+                {"page_number": 2, "score": 0.4, "retrieval_method": "pgvector"},
+            ],
+            "llm_synthesis_used": True,
+            "synthesis_provider": "local_fake",
+        }
+    )
+
+    assert observability["retrieval_methods"] == ["pgvector"]
+    assert observability["average_score"] == 0.6
+    assert observability["evidence_count"] == 2
+    assert observability["llm_synthesis_used"] is True
+    assert observability["synthesis_provider"] == "local_fake"
+    assert database_mode_label("postgresql", has_pgvector=True) == "postgres_pgvector"
+    assert database_mode_label("postgresql", has_pgvector=False) == "postgres"
+    assert database_mode_label("sqlite", has_pgvector=False) == "sqlite"
+
+
+def test_pgvector_smoke_helpers_detect_postgres_and_skip_local_providers():
+    settings = Settings(
+        database_url="sqlite:///./bidguard.db",
+        embedding_provider="local",
+        llm_provider="local_fake",
+    )
+
+    assert database_url_is_postgres("postgresql+psycopg://bidguard:bidguard@localhost/bidguard")
+    assert not database_url_is_postgres(settings.database_url)
+    assert embedding_validation_status(settings)["status"] == "skipped"
+    assert llm_validation_status(settings)["status"] == "skipped"

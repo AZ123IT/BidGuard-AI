@@ -18,7 +18,7 @@ Output: final answer, evidence list, confidence, synthesis provider, and whether
 
 Input: `document_id`.
 
-Output: matched rules with severity, explanation, evidence text, and page number when available.
+Output: matched rules with category, severity, explanation, evidence text, and page number when available.
 
 ### cross_doc_diff_tool
 

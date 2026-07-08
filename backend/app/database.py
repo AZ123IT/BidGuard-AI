@@ -32,14 +32,14 @@ def ensure_runtime_schema(engine: Engine, settings: Settings) -> None:
     table_names = inspector.get_table_names()
     if "document_chunks" not in table_names:
         return
-    existing_columns = {column["name"] for column in inspector.get_columns("document_chunks")}
+    existing_columns = _column_names(engine, inspector, "document_chunks")
     metadata_columns = {
         "embedding_provider": "VARCHAR(80)",
         "embedding_model": "VARCHAR(160)",
         "embedding_dimension": "INTEGER",
     }
     risk_finding_columns = (
-        {column["name"] for column in inspector.get_columns("risk_findings")}
+        _column_names(engine, inspector, "risk_findings")
         if "risk_findings" in table_names
         else set()
     )
@@ -67,6 +67,25 @@ def ensure_runtime_schema(engine: Engine, settings: Settings) -> None:
                     "ON document_chunks USING ivfflat (embedding_vector vector_cosine_ops)"
                 )
             )
+
+
+def _column_names(engine: Engine, inspector, table_name: str) -> set[str]:
+    if engine.dialect.name == "postgresql":
+        with engine.connect() as connection:
+            return set(
+                connection.execute(
+                    text(
+                        """
+                        SELECT column_name
+                        FROM information_schema.columns
+                        WHERE table_schema = 'public'
+                          AND table_name = :table_name
+                        """
+                    ),
+                    {"table_name": table_name},
+                ).scalars()
+            )
+    return {column["name"] for column in inspector.get_columns(table_name)}
 
 
 def get_session(request: Request) -> Generator[Session, None, None]:
