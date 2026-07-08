@@ -30,6 +30,31 @@ npm run dev
 
 Open `http://localhost:3000`.
 
+## Quick Local Demo Flow
+
+This path uses SQLite, local deterministic embeddings, and local fake synthesis. It does not need Docker or API keys.
+
+1. Start backend and frontend with the commands above.
+2. Open `http://localhost:3000/documents`.
+3. Upload `data/sample_docs/sample_tender.pdf`.
+4. Open `http://localhost:3000/qa`, select the uploaded tender, and ask:
+
+```text
+What is the bid deadline?
+```
+
+5. Confirm the answer includes evidence with document title, page number, snippet, score, retrieval method, and synthesis status.
+6. Ask an unsupported question:
+
+```text
+What bank guarantee number is required?
+```
+
+7. Confirm the app returns the exact insufficient-evidence fallback.
+8. Open `http://localhost:3000/risk`, select the tender or `demo_risky_terms` if seeded, and run risk review.
+9. Open `http://localhost:3000/compare` and compare `demo_contract_draft` with `demo_contract_revised` after running the demo eval seeding step.
+10. Open `http://localhost:3000/agent-trace`, run a normal evidence question, a risk review request, and a compare request, then inspect tool calls.
+
 ## Run SQLite Eval
 
 ```bash
@@ -38,6 +63,17 @@ cd "/Users/kaisa/Downloads/BidGuard AI/backend"
 ```
 
 The output reports total cases, passed cases, pass rate, metric summary, retrieval methods, provider mode, and database mode.
+
+## Run Full Local Verification
+
+From the project root:
+
+```bash
+cd "/Users/kaisa/Downloads/BidGuard AI"
+python3 scripts/verify_all.py
+```
+
+This runs backend tests, Ruff, provider smoke, smoke eval, demo eval, frontend typecheck, and frontend build.
 
 ## Validate Providers
 
@@ -58,14 +94,14 @@ Real-provider mode is optional. Export provider keys in the shell or an untracke
 ```bash
 cd "/Users/kaisa/Downloads/BidGuard AI/backend"
 EMBEDDING_PROVIDER=openai_compatible \
-EMBEDDING_API_KEY="<set outside git>" \
-EMBEDDING_BASE_URL=https://api.openai.com/v1 \
-EMBEDDING_MODEL=text-embedding-3-small \
-EMBEDDING_DIMENSION=1536 \
+EMBEDDING_API_KEY=your_embedding_key_here \
+EMBEDDING_BASE_URL=https://your-openai-compatible-base-url \
+EMBEDDING_MODEL=your_embedding_model \
+EMBEDDING_DIMENSION=your_embedding_dimension \
 LLM_PROVIDER=openai_compatible \
-LLM_API_KEY="<set outside git>" \
-LLM_BASE_URL=https://api.openai.com/v1 \
-LLM_MODEL=gpt-4.1-mini \
+LLM_API_KEY=your_llm_key_here \
+LLM_BASE_URL=https://your-openai-compatible-base-url \
+LLM_MODEL=your_llm_model \
 .venv/bin/python scripts/smoke_providers.py
 ```
 
@@ -94,6 +130,12 @@ LLM_PROVIDER=local_fake \
 The smoke script verifies pgvector extension availability, vector column dimension, JSON/vector embedding storage, answerable Q&A retrieval with `retrieval_method: "pgvector"`, and the exact insufficient-evidence fallback.
 
 For the strongest real RAG demo, use PostgreSQL + pgvector with a real embedding provider. Set `EMBEDDING_DIMENSION` before running migrations so the `embedding_vector` column matches the provider output.
+
+You can also run the aggregate pgvector check from the project root:
+
+```bash
+python3 scripts/verify_all.py --with-pgvector
+```
 
 ## UI Demo Flow
 

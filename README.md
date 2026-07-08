@@ -4,6 +4,16 @@ BidGuard AI is an evidence-first tender and contract document review agent built
 
 It is not an enterprise SaaS system and does not provide professional legal advice.
 
+## Portfolio Snapshot
+
+- Evidence-first RAG: every answer includes retrieved document snippets, page numbers, scores, and retrieval method when evidence is available.
+- Guarded synthesis: the backend skips LLM synthesis when retrieved evidence is weak or missing.
+- Real RAG infrastructure: SQLite fallback for local demos, PostgreSQL + pgvector for vector retrieval, and provider abstractions for local or OpenAI-compatible models.
+- Agent workflow: evidence search, risk checks, cross-document diff, report generation, and tool-call trace logging.
+- Evaluation-ready: smoke eval, 18-case demo eval, provider smoke, pgvector smoke, and a single verification script.
+
+See `docs/interview_brief.md` for the interview narrative, feature matrix, limitations, and resume bullets.
+
 ## Features
 
 - Upload public tender or contract PDFs.
@@ -19,6 +29,24 @@ It is not an enterprise SaaS system and does not provide professional legal advi
 - Use guarded OpenAI-compatible embedding/LLM providers when configured.
 - Validate local or real providers with an optional smoke command.
 - Run a small RAG evaluation command.
+
+## Feature Matrix
+
+| Feature | Status | Notes |
+| --- | --- | --- |
+| PDF/TXT upload and seeding | Implemented | PDF upload through UI/API; text seeding for eval demos. |
+| Document parsing and chunking | Implemented | PyMuPDF plus page-aware chunks. |
+| Local embeddings | Fallback/local | Deterministic, no-key, repeatable tests. |
+| SQLite retrieval | Fallback/local | JSON embeddings with hybrid retrieval. |
+| PostgreSQL pgvector retrieval | Implemented | Verified by smoke script. |
+| Guarded LLM synthesis | Implemented | Evidence gate prevents unsupported synthesis. |
+| OpenAI-compatible providers | Optional real provider | Smoke validation skips gracefully without keys. |
+| Risk review | Implemented | Rule-based procurement checks. |
+| Cross-document diff | Implemented | Regex field extraction and structured differences. |
+| Agent trace | Implemented | Agent runs and tool calls are logged. |
+| Evaluation runner | Implemented | Smoke and demo eval datasets. |
+| OCR | Future | Not implemented. |
+| PDF evidence highlighting | Future | Snippets exist; visual highlights are future work. |
 
 ## Project Structure
 
@@ -86,19 +114,19 @@ For a real OpenAI-compatible embedding provider, set these before the first Post
 ```bash
 export DATABASE_URL=postgresql+psycopg://bidguard:bidguard@localhost:5432/bidguard
 export EMBEDDING_PROVIDER=openai_compatible
-export EMBEDDING_API_KEY="<set outside git>"
-export EMBEDDING_BASE_URL=https://api.openai.com/v1
-export EMBEDDING_MODEL=text-embedding-3-small
-export EMBEDDING_DIMENSION=1536
+export EMBEDDING_API_KEY=your_embedding_key_here
+export EMBEDDING_BASE_URL=https://your-openai-compatible-base-url
+export EMBEDDING_MODEL=your_embedding_model
+export EMBEDDING_DIMENSION=your_embedding_dimension
 ```
 
 Optional guarded LLM synthesis uses:
 
 ```bash
 export LLM_PROVIDER=openai_compatible
-export LLM_API_KEY="<set outside git>"
-export LLM_BASE_URL=https://api.openai.com/v1
-export LLM_MODEL=gpt-4.1-mini
+export LLM_API_KEY=your_llm_key_here
+export LLM_BASE_URL=https://your-openai-compatible-base-url
+export LLM_MODEL=your_llm_model
 ```
 
 Validate configured real providers before running a demo:
@@ -146,9 +174,28 @@ Frontend:
 
 ## Verification
 
+Run the default all-in-one verification command from the project root:
+
+```bash
+python3 scripts/verify_all.py
+```
+
+It runs backend tests, Ruff, provider smoke, smoke eval, demo eval, frontend typecheck, and frontend build. It does not require Docker or real API keys.
+
+Optional pgvector verification:
+
+```bash
+python3 scripts/verify_all.py --with-pgvector
+```
+
+Equivalent individual commands:
+
 ```bash
 cd backend && .venv/bin/python -m pytest tests -q
 cd backend && .venv/bin/ruff check .
+cd backend && .venv/bin/python scripts/smoke_providers.py
+cd backend && .venv/bin/python -m app.evaluation.run_eval
+cd backend && .venv/bin/python -m app.evaluation.run_eval --dataset ../data/eval_cases/rag_demo.json
 cd frontend && npm run typecheck
 cd frontend && npm run build
 ```

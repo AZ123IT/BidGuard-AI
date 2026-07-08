@@ -5,20 +5,28 @@
 BidGuard AI is a local-first full-stack portfolio application.
 
 ```mermaid
-flowchart LR
-  UI["Next.js UI"] --> API["FastAPI API"]
-  API --> Parser["PDF parser"]
-  API --> Retrieval["Hybrid retrieval"]
-  API --> Embeddings["Embedding provider"]
-  API --> LLM["Guarded LLM synthesis"]
-  API --> Rules["Risk rule checker"]
-  API --> Diff["Field diff"]
+flowchart TD
+  UI["Next.js frontend"] --> API["FastAPI API"]
+  Eval["Eval runner and smoke scripts"] --> API
+  API --> Upload["Document upload / text seed"]
+  Upload --> Parser["PDF parser"]
+  Parser --> Chunker["Page-aware chunker"]
+  Chunker --> Embeddings["Embedding provider"]
+  Embeddings --> Chunks["document_chunks"]
+  Chunks --> SQLite["SQLite JSON embedding fallback"]
+  Chunks --> PG["PostgreSQL + pgvector"]
+  SQLite --> Retrieval["Hybrid retrieval"]
+  PG --> Retrieval
+  Retrieval --> Gate["Evidence sufficiency gate"]
+  Gate -->|sufficient| LLM["Guarded LLM synthesis"]
+  Gate -->|weak or empty| Fallback["Exact insufficient-evidence response"]
+  LLM --> Evidence["Answer with citations"]
+  Fallback --> Evidence
   API --> Agent["Tool-calling agent"]
-  API --> DB[("SQLite or PostgreSQL")]
-  Parser --> DB
-  Retrieval --> DB
-  Rules --> DB
-  Agent --> DB
+  Agent --> Tools["Evidence search / risk check / diff / report"]
+  Tools --> Trace["Agent runs and tool calls"]
+  Evidence --> UI
+  Trace --> UI
 ```
 
 ## Backend Modules

@@ -7,6 +7,14 @@ cd backend
 .venv/bin/python -m app.evaluation.run_eval
 ```
 
+For the full local verification workflow, run this from the project root:
+
+```bash
+python3 scripts/verify_all.py
+```
+
+It runs backend tests, Ruff, provider smoke, smoke eval, demo eval, frontend typecheck, and frontend build. Add `--with-pgvector` when Docker is available and you want PostgreSQL pgvector smoke verification in the same command.
+
 The runner loads `data/eval_cases/rag_smoke.json` by default. Phase 2.3 adds a richer demo dataset:
 
 ```bash

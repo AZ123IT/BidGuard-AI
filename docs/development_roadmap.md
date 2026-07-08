@@ -46,6 +46,13 @@
 - Clear embedding dimension mismatch, HTTP, timeout, and response-shape errors.
 - Documentation for local mode, real provider mode, and PostgreSQL + pgvector real-embedding demos.
 
+## Phase 2.5 Included
+
+- Root verification script for backend tests, Ruff, provider smoke, evals, frontend checks, and optional pgvector smoke.
+- Interview brief with architecture summary, feature matrix, limitations, and resume-ready project bullets.
+- Demo walkthrough polish for local UI demo, SQLite eval, provider smoke, PostgreSQL pgvector smoke, and optional real-provider validation.
+- README portfolio snapshot and recruiter-friendly verification instructions.
+
 ## Next Phase
 
 - Add more realistic public-document eval cases.
