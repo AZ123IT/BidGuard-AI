@@ -70,10 +70,19 @@ class OpenAICompatibleLLMProvider:
                 timeout=self.timeout_seconds,
             )
             response.raise_for_status()
-        except httpx.HTTPError as exc:
+        except httpx.HTTPStatusError as exc:
+            detail = exc.response.text[:500]
+            raise LLMError(f"LLM provider returned HTTP {exc.response.status_code}: {detail}") from exc
+        except httpx.TimeoutException as exc:
+            raise LLMError(
+                f"LLM provider request timed out after {self.timeout_seconds} seconds."
+            ) from exc
+        except httpx.RequestError as exc:
             raise LLMError(f"LLM provider request failed: {exc}") from exc
         try:
             return response.json()["choices"][0]["message"]["content"].strip()
+        except ValueError as exc:
+            raise LLMError("LLM provider returned non-JSON response.") from exc
         except (KeyError, IndexError, TypeError) as exc:
             raise LLMError("LLM provider returned an unexpected response shape.") from exc
 
@@ -84,10 +93,22 @@ def make_llm_provider(settings: Settings) -> AnswerProvider:
         return DeterministicLLMProvider(model=settings.llm_model)
     if provider in {"openai", "openai_compatible", "qwen"}:
         api_key = settings.llm_api_key or settings.openai_api_key
+        base_url = settings.llm_base_url or settings.openai_base_url
         if not api_key:
-            raise LLMError("LLM_API_KEY is required when LLM_PROVIDER is not local_fake.")
+            raise LLMError(
+                "LLM_API_KEY or OPENAI_API_KEY is required when "
+                f"LLM_PROVIDER={settings.llm_provider}. Use LLM_PROVIDER=local_fake "
+                "for zero-config deterministic synthesis."
+            )
+        if not base_url:
+            raise LLMError(
+                "LLM_BASE_URL or OPENAI_BASE_URL is required when "
+                f"LLM_PROVIDER={settings.llm_provider}."
+            )
+        if not settings.llm_model:
+            raise LLMError(f"LLM_MODEL is required when LLM_PROVIDER={settings.llm_provider}.")
         return OpenAICompatibleLLMProvider(
-            base_url=settings.llm_base_url or settings.openai_base_url,
+            base_url=base_url,
             model=settings.llm_model,
             api_key=api_key,
             temperature=settings.llm_temperature,
@@ -100,6 +121,7 @@ def guarded_synthesize_answer(
     evidence: list[dict],
     provider: AnswerProvider,
     min_score: float,
+    raise_on_provider_error: bool = False,
 ) -> dict:
     if not is_evidence_sufficient(evidence, min_score=min_score):
         return {
@@ -114,6 +136,8 @@ def guarded_synthesize_answer(
         answer = provider.synthesize(question, evidence)
         synthesis_used = True
     except LLMError:
+        if raise_on_provider_error:
+            raise
         answer = build_evidence_answer(question, evidence)["answer"]
         synthesis_used = False
 

@@ -17,6 +17,7 @@ It is not an enterprise SaaS system and does not provide professional legal advi
 - Generate real chunk embeddings through a provider abstraction.
 - Use deterministic local embeddings and local fake synthesis for tests.
 - Use guarded OpenAI-compatible embedding/LLM providers when configured.
+- Validate local or real providers with an optional smoke command.
 - Run a small RAG evaluation command.
 
 ## Project Structure
@@ -56,6 +57,13 @@ Optional PostgreSQL:
 docker compose up -d postgres
 ```
 
+Provider smoke validation works without PostgreSQL and without API keys in local mode:
+
+```bash
+cd backend
+.venv/bin/python scripts/smoke_providers.py
+```
+
 For local pgvector verification without external API keys:
 
 ```bash
@@ -75,22 +83,29 @@ LLM_PROVIDER=local_fake \
 
 For a real OpenAI-compatible embedding provider, set these before the first PostgreSQL migration or before the app creates the `embedding_vector` column:
 
-```text
-DATABASE_URL=postgresql+psycopg://bidguard:bidguard@localhost:5432/bidguard
-EMBEDDING_PROVIDER=openai_compatible
-EMBEDDING_API_KEY=...
-EMBEDDING_BASE_URL=https://api.openai.com/v1
-EMBEDDING_MODEL=text-embedding-3-small
-EMBEDDING_DIMENSION=1536
+```bash
+export DATABASE_URL=postgresql+psycopg://bidguard:bidguard@localhost:5432/bidguard
+export EMBEDDING_PROVIDER=openai_compatible
+export EMBEDDING_API_KEY="<set outside git>"
+export EMBEDDING_BASE_URL=https://api.openai.com/v1
+export EMBEDDING_MODEL=text-embedding-3-small
+export EMBEDDING_DIMENSION=1536
 ```
 
 Optional guarded LLM synthesis uses:
 
-```text
-LLM_PROVIDER=openai_compatible
-LLM_API_KEY=...
-LLM_BASE_URL=https://api.openai.com/v1
-LLM_MODEL=gpt-4.1-mini
+```bash
+export LLM_PROVIDER=openai_compatible
+export LLM_API_KEY="<set outside git>"
+export LLM_BASE_URL=https://api.openai.com/v1
+export LLM_MODEL=gpt-4.1-mini
+```
+
+Validate configured real providers before running a demo:
+
+```bash
+cd backend
+.venv/bin/python scripts/smoke_providers.py
 ```
 
 For PostgreSQL, pgvector is enabled by `docker-compose.yml` and the Alembic/runtime DDL adds an optional `embedding_vector` column. The vector dimension must match `EMBEDDING_DIMENSION`; if you change dimensions after creating the column, recreate the local Postgres volume or migrate the column intentionally. SQLite remains the default and stores embeddings in JSON.
@@ -170,6 +185,13 @@ EMBEDDING_DIMENSION=64 \
 LLM_PROVIDER=local_fake \
 .venv/bin/python scripts/smoke_pgvector.py
 ```
+
+Common provider smoke outcomes:
+
+- `status: passed`: the selected local or real provider returned a usable response.
+- `status: skipped`: a real provider was selected but required key variables were not set.
+- `Embedding dimension mismatch`: set `EMBEDDING_DIMENSION` to the actual model dimension and recreate or migrate the pgvector column if needed.
+- `returned HTTP ...` or `timed out`: check base URL, model name, API key, and provider availability.
 
 ## Evidence-First RAG Behavior
 

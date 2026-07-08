@@ -52,10 +52,22 @@ class OpenAICompatibleEmbeddingProvider:
                 timeout=self.timeout_seconds,
             )
             response.raise_for_status()
-        except httpx.HTTPError as exc:
+        except httpx.HTTPStatusError as exc:
+            detail = exc.response.text[:500]
+            raise EmbeddingError(
+                f"Embedding provider returned HTTP {exc.response.status_code}: {detail}"
+            ) from exc
+        except httpx.TimeoutException as exc:
+            raise EmbeddingError(
+                f"Embedding provider request timed out after {self.timeout_seconds} seconds."
+            ) from exc
+        except httpx.RequestError as exc:
             raise EmbeddingError(f"Embedding provider request failed: {exc}") from exc
 
-        payload = response.json()
+        try:
+            payload = response.json()
+        except ValueError as exc:
+            raise EmbeddingError("Embedding provider returned non-JSON response.") from exc
         try:
             embeddings = [item["embedding"] for item in sorted(payload["data"], key=lambda item: item["index"])]
         except (KeyError, TypeError) as exc:
@@ -79,13 +91,26 @@ def make_embedding_provider(settings: Settings) -> EmbeddingProvider:
         )
     if provider in {"openai", "openai_compatible", "qwen", "bge"}:
         api_key = settings.embedding_api_key or settings.openai_api_key
+        base_url = settings.embedding_base_url or settings.openai_base_url
         if not api_key:
             raise EmbeddingError(
-                "EMBEDDING_API_KEY is required when EMBEDDING_PROVIDER is not local."
+                "EMBEDDING_API_KEY or OPENAI_API_KEY is required when "
+                f"EMBEDDING_PROVIDER={settings.embedding_provider}. Use EMBEDDING_PROVIDER=local "
+                "for zero-config deterministic embeddings."
+            )
+        if not base_url:
+            raise EmbeddingError(
+                "EMBEDDING_BASE_URL or OPENAI_BASE_URL is required when "
+                f"EMBEDDING_PROVIDER={settings.embedding_provider}."
+            )
+        if not settings.embedding_model:
+            raise EmbeddingError(
+                "EMBEDDING_MODEL is required when "
+                f"EMBEDDING_PROVIDER={settings.embedding_provider}."
             )
         return OpenAICompatibleEmbeddingProvider(
             api_key=api_key,
-            base_url=settings.embedding_base_url or settings.openai_base_url,
+            base_url=base_url,
             model=settings.embedding_model,
             dimension=settings.embedding_dimension,
         )

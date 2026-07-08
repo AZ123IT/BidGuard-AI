@@ -39,6 +39,13 @@
 - Metric summary for retrieval, evidence page, answer keyword, insufficient-evidence, tool-call, risk, and diff checks.
 - Demo walkthrough documentation for interviews.
 
+## Phase 2.4 Included
+
+- Standalone provider smoke validation for local deterministic and OpenAI-compatible providers.
+- Clear skip behavior when real provider keys are not configured.
+- Clear embedding dimension mismatch, HTTP, timeout, and response-shape errors.
+- Documentation for local mode, real provider mode, and PostgreSQL + pgvector real-embedding demos.
+
 ## Next Phase
 
 - Add more realistic public-document eval cases.

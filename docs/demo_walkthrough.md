@@ -39,6 +39,38 @@ cd "/Users/kaisa/Downloads/BidGuard AI/backend"
 
 The output reports total cases, passed cases, pass rate, metric summary, retrieval methods, provider mode, and database mode.
 
+## Validate Providers
+
+Local mode is the default interview-safe mode:
+
+```bash
+cd "/Users/kaisa/Downloads/BidGuard AI/backend"
+EMBEDDING_PROVIDER=local \
+EMBEDDING_DIMENSION=64 \
+LLM_PROVIDER=local_fake \
+.venv/bin/python scripts/smoke_providers.py
+```
+
+It works without API keys, is deterministic, and is suitable for tests. It is not meant to prove semantic embedding quality.
+
+Real-provider mode is optional. Export provider keys in the shell or an untracked `.env` file, then run:
+
+```bash
+cd "/Users/kaisa/Downloads/BidGuard AI/backend"
+EMBEDDING_PROVIDER=openai_compatible \
+EMBEDDING_API_KEY="<set outside git>" \
+EMBEDDING_BASE_URL=https://api.openai.com/v1 \
+EMBEDDING_MODEL=text-embedding-3-small \
+EMBEDDING_DIMENSION=1536 \
+LLM_PROVIDER=openai_compatible \
+LLM_API_KEY="<set outside git>" \
+LLM_BASE_URL=https://api.openai.com/v1 \
+LLM_MODEL=gpt-4.1-mini \
+.venv/bin/python scripts/smoke_providers.py
+```
+
+If keys are missing, the smoke command prints `skipped` for real providers and exits successfully. If dimensions mismatch, it fails with the expected and actual vector lengths.
+
 ## Run PostgreSQL + pgvector Smoke
 
 ```bash
@@ -61,6 +93,8 @@ LLM_PROVIDER=local_fake \
 
 The smoke script verifies pgvector extension availability, vector column dimension, JSON/vector embedding storage, answerable Q&A retrieval with `retrieval_method: "pgvector"`, and the exact insufficient-evidence fallback.
 
+For the strongest real RAG demo, use PostgreSQL + pgvector with a real embedding provider. Set `EMBEDDING_DIMENSION` before running migrations so the `embedding_vector` column matches the provider output.
+
 ## UI Demo Flow
 
 1. Upload or seed demo documents through eval. The eval runner seeds text documents into the local database for repeatable demos.
@@ -79,6 +113,7 @@ The smoke script verifies pgvector extension availability, vector column dimensi
 - Tool-call correctness for agent routing.
 - Average retrieval score and observed retrieval method.
 - Provider mode and database mode, showing SQLite fallback and PostgreSQL pgvector verification.
+- Provider smoke result, explaining that local deterministic providers are for repeatable tests and real provider mode is validated separately.
 
 ## Boundaries
 

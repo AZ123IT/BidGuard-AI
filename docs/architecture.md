@@ -37,6 +37,7 @@ flowchart LR
 - `app/services/agent.py`: lightweight tool routing and trace logging.
 - `app/evaluation/run_eval.py`: deterministic eval runner for smoke and demo datasets.
 - `app/evaluation/metrics.py`: boolean metric checks for retrieval, answer keywords, insufficient evidence, risk, diff, and tool routing.
+- `app/evaluation/provider_smoke.py`: optional local or OpenAI-compatible provider validation without requiring PostgreSQL.
 
 ## Frontend Pages
 
@@ -66,3 +67,11 @@ SQLite stores embeddings in the portable `document_chunks.embedding` JSON field 
 The vector column dimension must match `EMBEDDING_DIMENSION`. Local verification uses `64`; common hosted models such as `text-embedding-3-small` use `1536`. Set the dimension before running PostgreSQL migrations or before starting the app against a fresh database.
 
 LLM synthesis is optional. `LLM_PROVIDER=local_fake` keeps tests deterministic. OpenAI-compatible providers are only called when configured and only after retrieved evidence passes the backend sufficiency gate. If evidence is weak or empty, the backend returns the fixed insufficient-evidence sentence without calling the LLM.
+
+## Provider Modes
+
+Local mode uses `EMBEDDING_PROVIDER=local` and `LLM_PROVIDER=local_fake`. It is deterministic, zero-config, and safe for tests, but it does not prove semantic retrieval quality.
+
+Real-provider mode uses `EMBEDDING_PROVIDER=openai_compatible` and/or `LLM_PROVIDER=openai_compatible`. Real providers are validated by `backend/scripts/smoke_providers.py`; missing keys are reported as skipped instead of failing normal tests. Embedding dimension mismatches fail clearly because PostgreSQL pgvector columns must match the configured provider dimension.
+
+The most realistic RAG demo is PostgreSQL + pgvector with a real embedding provider, followed by the demo eval. The evidence-first guard remains the same in every mode.

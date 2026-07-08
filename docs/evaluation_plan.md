@@ -16,6 +16,15 @@ cd backend
 
 The runner seeds the required synthetic sample documents for the current run, executes Q&A, insufficient-evidence, risk, diff, and agent-routing cases, and prints JSON metrics plus observability fields.
 
+Provider validation is separate from the eval runner so normal tests never need real API keys:
+
+```bash
+cd backend
+.venv/bin/python scripts/smoke_providers.py
+```
+
+The provider smoke validates local deterministic embeddings and local fake synthesis by default. If `EMBEDDING_PROVIDER=openai_compatible` or `LLM_PROVIDER=openai_compatible` is selected without keys, the command reports `skipped` for that provider. If keys are configured, it calls the provider, checks embedding dimension, checks non-empty guarded synthesis, and rejects unsupported bracket citations.
+
 Optional JSON report:
 
 ```bash
@@ -57,6 +66,7 @@ The pgvector smoke script checks connection mode, pgvector extension availabilit
 - Tool call accuracy: whether the agent selected the right tool sequence.
 - Retrieval method: whether evidence came from `hybrid_fallback` or `pgvector`.
 - Provider/database mode: whether the run used local providers, OpenAI-compatible providers, SQLite, or PostgreSQL pgvector.
+- Provider smoke status: whether local providers passed, real providers passed, or real providers were skipped because keys were absent.
 - Latency: endpoint and tool-call execution time.
 - Token cost: future LLM and embedding provider usage cost.
 
