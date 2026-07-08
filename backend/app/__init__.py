@@ -1,0 +1,1 @@
+"""BidGuard AI backend package."""

@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+backend/.venv/
+backend/bidguard.db
+*.sqlite
+*.sqlite3
+
+# Node / Next.js
+node_modules/
+frontend/.next/
+frontend/out/
+frontend/.env.local
+frontend/npm-debug.log*
+
+# Environment and uploads
+.env
+backend/.env
+data/uploads/*
+!data/uploads/.gitkeep
+
+# OS/editor
+.DS_Store
+.idea/
+.vscode/

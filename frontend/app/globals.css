@@ -1,0 +1,93 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg: #f5f7f1;
+  --ink: #17201b;
+  --muted: #64736a;
+  --line: #c6d0c4;
+  --moss: #335f42;
+  --signal: #c9ff3d;
+  --oxide: #9d2f2f;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background:
+    linear-gradient(rgba(23, 32, 27, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(23, 32, 27, 0.035) 1px, transparent 1px),
+    var(--bg);
+  background-size: 28px 28px;
+  color: var(--ink);
+  font-family: "IBM Plex Sans", "Aptos", "Segoe UI", sans-serif;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+::selection {
+  background: var(--signal);
+  color: var(--ink);
+}
+
+.panel {
+  border: 1px solid var(--line);
+  background: rgba(245, 247, 241, 0.92);
+  box-shadow: 0 1px 0 rgba(23, 32, 27, 0.16);
+}
+
+.control {
+  min-height: 42px;
+  border: 1px solid var(--line);
+  background: #fffef8;
+  padding: 0.65rem 0.75rem;
+  color: var(--ink);
+  outline: none;
+}
+
+.control:focus {
+  border-color: var(--moss);
+  box-shadow: 0 0 0 3px rgba(201, 255, 61, 0.42);
+}
+
+.btn {
+  min-height: 42px;
+  border: 1px solid var(--ink);
+  background: var(--ink);
+  color: #fffef8;
+  padding: 0.65rem 0.9rem;
+  font-weight: 700;
+}
+
+.btn:hover {
+  background: var(--moss);
+}
+
+.btn-secondary {
+  background: #fffef8;
+  color: var(--ink);
+}
+
+.btn-secondary:hover {
+  background: var(--signal);
+}
+
+.table-grid {
+  display: grid;
+  grid-template-columns: minmax(130px, 0.9fr) minmax(170px, 1.2fr) minmax(170px, 1.2fr) minmax(90px, 0.7fr);
+}
+
+@media (max-width: 860px) {
+  .table-grid {
+    grid-template-columns: 1fr;
+  }
+}

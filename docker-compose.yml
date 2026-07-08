@@ -1,0 +1,21 @@
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: bidguard-postgres
+    environment:
+      POSTGRES_DB: bidguard
+      POSTGRES_USER: bidguard
+      POSTGRES_PASSWORD: bidguard
+    ports:
+      - "5432:5432"
+    volumes:
+      - bidguard_postgres:/var/lib/postgresql/data
+      - ./backend/sql:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U bidguard -d bidguard"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  bidguard_postgres:

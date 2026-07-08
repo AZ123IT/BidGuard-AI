@@ -1,0 +1,20 @@
+[
+  {
+    "name": "sample_bid_deadline",
+    "document_title": "sample_tender",
+    "question": "What is the bid deadline?",
+    "expected_evidence_page": 1,
+    "expected_answer_keywords": ["30 July 2026"],
+    "expected_tools": ["evidence_search_tool", "guarded_llm_synthesis"],
+    "eval_type": "qa"
+  },
+  {
+    "name": "sample_missing_insurance",
+    "document_title": "sample_tender",
+    "question": "What insurance policy number is required?",
+    "expected_evidence_page": null,
+    "expected_answer_keywords": [],
+    "expected_tools": [],
+    "eval_type": "insufficient"
+  }
+]
