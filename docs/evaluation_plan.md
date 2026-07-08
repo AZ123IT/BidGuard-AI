@@ -7,7 +7,22 @@ cd backend
 .venv/bin/python -m app.evaluation.run_eval
 ```
 
-The runner loads `data/eval_cases/rag_smoke.json`, ensures the sample tender is available, runs Q&A or agent calls, and prints JSON metrics plus observability fields.
+The runner loads `data/eval_cases/rag_smoke.json` by default. Phase 2.3 adds a richer demo dataset:
+
+```bash
+cd backend
+.venv/bin/python -m app.evaluation.run_eval --dataset ../data/eval_cases/rag_demo.json
+```
+
+The runner seeds the required synthetic sample documents for the current run, executes Q&A, insufficient-evidence, risk, diff, and agent-routing cases, and prints JSON metrics plus observability fields.
+
+Optional JSON report:
+
+```bash
+.venv/bin/python -m app.evaluation.run_eval \
+  --dataset ../data/eval_cases/rag_demo.json \
+  --output-json ../data/eval_reports/latest_eval.json
+```
 
 The output includes:
 
@@ -16,6 +31,9 @@ The output includes:
 - retrieval methods observed, such as `hybrid_fallback` or `pgvector`,
 - average evidence score across answerable cases,
 - per-case evidence count, average score, synthesis provider, and whether LLM synthesis was used.
+- risk category and keyword hits,
+- diff field and keyword hits,
+- failed case ids.
 
 For local PostgreSQL verification, run:
 
@@ -50,6 +68,8 @@ The pgvector smoke script checks connection mode, pgvector extension availabilit
 4. Cross-document comparisons with one controlled field changed.
 5. Agent objectives that should trigger retrieval only, risk plus retrieval, or diff plus retrieval.
 
+The demo eval currently uses 18 synthetic cases across all five categories.
+
 ## Scoring Approach
 
 Start with deterministic checks:
@@ -59,5 +79,6 @@ Start with deterministic checks:
 - expected risk rule names appear,
 - changed fields are marked changed,
 - uncertain fields are not presented as certain.
+- expected agent tools appear in the trace.
 
 Only after this baseline should LLM-judged faithfulness or Ragas integration be introduced.

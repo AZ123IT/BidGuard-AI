@@ -45,6 +45,10 @@ The MVP agent is not a multi-agent system. It uses simple intent routing:
 
 Every tool call is stored in `tool_calls` with input, output, and latency. API trace responses also include status and evidence count summaries. The run is stored in `agent_runs`.
 
+## Evaluation Coverage
+
+`data/eval_cases/rag_demo.json` includes deterministic agent routing checks for the three main paths: grounded Q&A should call `evidence_search_tool`, risk review should call `risk_rule_check_tool`, and comparison should call `cross_doc_diff_tool`. The eval runner reports tool-call correctness alongside retrieval, insufficient-evidence, risk, and diff metrics.
+
 ## Failure Behavior
 
 If a document does not exist, the API returns a 404. If evidence search finds no usable chunks, the answer is the fixed insufficient-evidence message. The agent does not invent citations.

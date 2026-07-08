@@ -1,0 +1,17 @@
+=== Page 1 ===
+Document type: Risky tender terms.
+Project name: Portable Battery Storage Pilot.
+Buyer: Inland Water Authority.
+Supplier: VoltBox Systems Pty Ltd.
+Bid deadline: 10 September 2026 at 12:00.
+Opening time: 11 September 2026 at 09:00.
+Contract amount: AUD 480,000.
+Payment terms: The purchaser shall pay the supplier within 120 days after receiving a valid invoice.
+Delivery date: 30 November 2026.
+
+=== Page 2 ===
+Acceptance criteria: Acceptance will be determined as satisfactory by the purchaser.
+Liability clause: Supplier liability is capped at AUD 50,000.
+Termination condition: The purchaser may terminate at any time without reason.
+Evaluation criteria: The buyer will score proposals based on overall value and technical fit.
+Qualification requirement: The proposed inverter must use a specific brand controller from a designated manufacturer.

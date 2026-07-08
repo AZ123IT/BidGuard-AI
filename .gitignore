@@ -21,6 +21,7 @@ frontend/tsconfig.tsbuildinfo
 backend/.env
 data/uploads/*
 !data/uploads/.gitkeep
+data/eval_reports/
 
 # OS/editor
 .DS_Store

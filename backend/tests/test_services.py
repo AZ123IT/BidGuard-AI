@@ -45,6 +45,22 @@ def test_evidence_answer_refuses_when_no_relevant_evidence():
     assert response["evidence"] == []
 
 
+def test_evidence_answer_prefers_clause_sentence_matching_question():
+    response = build_evidence_answer(
+        "What is the bid deadline for the Harbor Solar Microgrid Upgrade?",
+        [
+            {
+                "document_title": "Demo Tender",
+                "page_number": 1,
+                "text": "Project name: Harbor Solar Microgrid Upgrade. Bid deadline: 20 August 2026 at 17:00. Payment terms: 45 days after invoice.",
+                "score": 0.9,
+            }
+        ],
+    )
+
+    assert "Bid deadline: 20 August 2026 at 17:00" in response["answer"]
+
+
 def test_risk_rules_find_payment_and_missing_dispute_resolution_evidence():
     pages = [
         {

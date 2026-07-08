@@ -1,0 +1,16 @@
+=== Page 1 ===
+Document type: Revised contract addendum.
+Project name: Harbor Solar Microgrid Upgrade.
+Buyer: Harbor City Council.
+Supplier: SunPeak Energy Pty Ltd.
+Bid deadline: 22 August 2026 at 15:00.
+Opening time: 22 August 2026 at 15:30.
+Contract amount: AUD 1,350,000 revised fixed price.
+Payment terms: The purchaser shall pay the supplier within 120 days after invoice approval.
+Delivery date: 15 January 2027.
+
+=== Page 2 ===
+Liability clause: Supplier liability is capped at AUD 500,000.
+Dispute resolution: The courts of Victoria have exclusive jurisdiction.
+Termination condition: The purchaser may terminate for uncured material breach after 14 days written notice.
+Addendum note: This revised draft intentionally removes the detailed site sign-off process from the earlier contract draft.

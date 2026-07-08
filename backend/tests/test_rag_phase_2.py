@@ -11,6 +11,7 @@ from app.evaluation.pgvector_smoke import (
     embedding_validation_status,
     llm_validation_status,
 )
+from app.evaluation.run_eval import DEMO_CASES, load_eval_cases
 from app.main import create_app
 from app.services.embeddings import LocalEmbeddingProvider, cosine_similarity
 from app.services.llm import DeterministicLLMProvider, guarded_synthesize_answer
@@ -68,6 +69,39 @@ def test_retrieval_returns_hybrid_metadata_with_similarity_scores():
     assert results[0]["similarity_score"] > 0
     assert results[0]["keyword_score"] > 0
     assert results[0]["score"] >= results[0]["similarity_score"] * 0.4
+
+
+def test_retrieval_prefers_acceptance_criteria_clause_match():
+    provider = LocalEmbeddingProvider(dimension=16, model="local-test")
+    question = "What acceptance criteria are in the contract draft?"
+    chunks = [
+        {
+            "id": 1,
+            "document_id": 2,
+            "document_title": "Contract Draft",
+            "page_number": 1,
+            "text": "Document type: Contract draft. Project name: Harbor Solar Microgrid Upgrade. Contract amount: AUD 1,250,000.",
+            "embedding": provider.embed_texts(["Document type: Contract draft. Project name: Harbor Solar Microgrid Upgrade. Contract amount: AUD 1,250,000."])[0],
+        },
+        {
+            "id": 2,
+            "document_id": 2,
+            "document_title": "Contract Draft",
+            "page_number": 2,
+            "text": "Acceptance criteria: Site acceptance requires successful commissioning and safety certificate delivery.",
+            "embedding": provider.embed_texts(["Acceptance criteria: Site acceptance requires successful commissioning and safety certificate delivery."])[0],
+        },
+    ]
+
+    results = retrieve_relevant_chunks(
+        question,
+        chunks,
+        limit=2,
+        query_embedding=provider.embed_texts([question])[0],
+        retrieval_method="hybrid_fallback",
+    )
+
+    assert results[0]["page_number"] == 2
 
 
 def test_guarded_synthesis_skips_llm_when_evidence_is_weak():
@@ -213,3 +247,71 @@ def test_pgvector_smoke_helpers_detect_postgres_and_skip_local_providers():
     assert not database_url_is_postgres(settings.database_url)
     assert embedding_validation_status(settings)["status"] == "skipped"
     assert llm_validation_status(settings)["status"] == "skipped"
+
+
+def test_demo_eval_dataset_loads_required_case_types():
+    cases = load_eval_cases(DEMO_CASES)
+    eval_types = {case["eval_type"] for case in cases}
+
+    assert 12 <= len(cases) <= 20
+    assert {"qa", "insufficient", "risk", "diff", "agent"}.issubset(eval_types)
+    assert all(case.get("id") for case in cases)
+    assert any(case.get("expected_risk_categories") for case in cases)
+    assert any(case.get("expected_diff_fields") for case in cases)
+    assert any(case.get("expected_tools") for case in cases)
+
+
+def test_eval_metrics_cover_insufficient_tools_risk_and_diff():
+    insufficient = score_eval_case(
+        {"eval_type": "insufficient", "expected_insufficient_evidence": True},
+        {"answer": INSUFFICIENT_EVIDENCE_MESSAGE, "evidence": []},
+    )
+    legacy_qa = score_eval_case(
+        {"eval_type": "qa", "expected_tools": ["evidence_search_tool"]},
+        {"answer": "Found evidence.", "evidence": [{"page_number": 1, "score": 0.9}]},
+    )
+    tool = score_eval_case(
+        {"eval_type": "agent", "expected_tools": ["evidence_search_tool"]},
+        {"answer": "Found evidence.", "evidence": [{"page_number": 1, "score": 0.9}]},
+        tool_calls=[{"tool_name": "evidence_search_tool"}],
+    )
+    risk = score_eval_case(
+        {
+            "eval_type": "risk",
+            "expected_risk_categories": ["payment_terms"],
+            "expected_risk_keywords": ["120 days"],
+        },
+        {"answer": "", "evidence": []},
+        risk_findings=[
+            {
+                "category": "payment_terms",
+                "rule_name": "Payment period longer than 90 days",
+                "evidence_text": "Payment within 120 days after invoice.",
+            }
+        ],
+    )
+    diff = score_eval_case(
+        {
+            "eval_type": "diff",
+            "expected_diff_fields": [{"field": "contract_amount", "status": "changed"}],
+            "expected_diff_keywords": ["AUD 1,250,000", "AUD 1,350,000"],
+        },
+        {"answer": "", "evidence": []},
+        diff_rows=[
+            {
+                "field": "contract_amount",
+                "status": "changed",
+                "document_a_value": "AUD 1,250,000",
+                "document_b_value": "AUD 1,350,000",
+            }
+        ],
+    )
+
+    assert insufficient["insufficient_evidence_hit"] is True
+    assert insufficient["retrieval_hit"] is True
+    assert legacy_qa["tool_call_hit"] is True
+    assert tool["tool_call_hit"] is True
+    assert risk["risk_category_hit"] is True
+    assert risk["risk_keyword_hit"] is True
+    assert diff["diff_field_hit"] is True
+    assert diff["diff_keyword_hit"] is True

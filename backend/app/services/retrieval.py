@@ -85,6 +85,14 @@ def retrieve_relevant_chunks(
             phrase_bonus += 1.5
         if "opening time" in question.lower() and "opening time" in lower_text:
             phrase_bonus += 1.5
+        if "acceptance" in question.lower() and "acceptance criteria" in lower_text:
+            phrase_bonus += 1.5
+        if "payment" in question.lower() and "payment terms" in lower_text:
+            phrase_bonus += 1.5
+        if "dispute" in question.lower() and "dispute resolution" in lower_text:
+            phrase_bonus += 1.5
+        if "contract amount" in question.lower() and "contract amount" in lower_text:
+            phrase_bonus += 1.5
         keyword_score = (raw_overlap + phrase_bonus) / max(len(set(query_tokens)), 1)
         similarity_score = cosine_similarity(query_embedding, _get_value(chunk, "embedding"))
         if query_embedding is not None and _get_value(chunk, "embedding"):
@@ -248,6 +256,23 @@ def _best_sentence(question: str, text: str) -> str:
     sentences = re.split(r"(?<=[.!?])\s+", text.strip())
     if not sentences:
         return text[:500]
+    lower_question = question.lower()
+    label_preferences = [
+        ("bid deadline", ["bid deadline", "submission deadline"]),
+        ("opening time", ["opening time", "bid opening"]),
+        ("payment", ["payment terms", "pay "]),
+        ("acceptance", ["acceptance criteria", "site acceptance"]),
+        ("dispute", ["dispute resolution", "arbitration", "mediation", "court", "jurisdiction"]),
+        ("contract amount", ["contract amount", "amount:"]),
+        ("delivery", ["delivery date", "delivery:"]),
+        ("liability", ["liability clause", "liability"]),
+        ("termination", ["termination condition", "termination"]),
+    ]
+    for question_trigger, sentence_labels in label_preferences:
+        if question_trigger in lower_question:
+            for sentence in sentences:
+                if any(label in sentence.lower() for label in sentence_labels):
+                    return sentence[:500]
     ranked = sorted(
         sentences,
         key=lambda sentence: len(query_tokens.intersection(tokenize(sentence))),

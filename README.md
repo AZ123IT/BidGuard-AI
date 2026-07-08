@@ -26,6 +26,7 @@ backend/          FastAPI API, SQLAlchemy models, services, tests, Alembic
 frontend/         Next.js App Router UI
 docs/             Architecture, database, agent, evaluation, roadmap docs
 data/sample_docs/ Sample tender text/PDF
+data/sample_docs/demo_pack/ Synthetic tender/contract demo pack
 data/uploads/     Local uploaded document storage
 docker-compose.yml
 ```
@@ -144,6 +145,21 @@ cd backend
 .venv/bin/python -m app.evaluation.run_eval
 ```
 
+Run the interview demo eval:
+
+```bash
+cd backend
+.venv/bin/python -m app.evaluation.run_eval --dataset ../data/eval_cases/rag_demo.json
+```
+
+Optionally write a local JSON report. Generated reports are ignored by Git:
+
+```bash
+.venv/bin/python -m app.evaluation.run_eval \
+  --dataset ../data/eval_cases/rag_demo.json \
+  --output-json ../data/eval_reports/latest_eval.json
+```
+
 Run the pgvector smoke verification after starting PostgreSQL:
 
 ```bash
@@ -164,6 +180,12 @@ The uploaded documents do not contain enough evidence to answer this question re
 ```
 
 When synthesis is enabled, the prompt instructs the LLM to answer only from retrieved evidence and never invent citations. Tests do not require real API keys.
+
+## Demo Pack
+
+The synthetic demo pack in `data/sample_docs/demo_pack/` includes a tender, contract draft, revised addendum, risky terms document, and policy notice. The expanded eval dataset at `data/eval_cases/rag_demo.json` covers evidence Q&A, insufficient evidence, risk rules, cross-document diff, and agent routing.
+
+See `docs/demo_walkthrough.md` for a repeatable demo script.
 
 ## MVP Boundaries
 

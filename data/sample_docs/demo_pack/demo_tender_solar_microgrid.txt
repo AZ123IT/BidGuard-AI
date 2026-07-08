@@ -1,0 +1,17 @@
+=== Page 1 ===
+Document type: Tender invitation.
+Project name: Harbor Solar Microgrid Upgrade.
+Buyer: Harbor City Council.
+Supplier: To be awarded after evaluation.
+Bid deadline: 20 August 2026 at 17:00.
+Opening time: 20 August 2026 at 17:30.
+Contract amount: AUD 1,200,000 estimated budget.
+Payment terms: The purchaser shall pay the supplier within 45 days after receiving a valid invoice.
+Delivery date: 15 December 2026.
+
+=== Page 2 ===
+Acceptance criteria: The system must pass factory acceptance tests, grid connection tests, battery performance tests, and a seven day site reliability test.
+Liability clause: Supplier liability is capped at the contract amount, and purchaser liability is limited to unpaid approved invoices.
+Dispute resolution: Mediation in Sydney followed by arbitration under ACICA rules.
+Termination condition: Either party may terminate for material breach after 14 days written notice and a failed cure period.
+Evaluation criteria: Price 40%, technical compliance 35%, delivery plan 15%, local support 10%.

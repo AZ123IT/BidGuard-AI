@@ -1,0 +1,200 @@
+[
+  {
+    "id": "qa_tender_bid_deadline",
+    "name": "Tender bid deadline lookup",
+    "eval_type": "qa",
+    "document_title": "demo_tender_solar_microgrid",
+    "question": "What is the bid deadline for the Harbor Solar Microgrid Upgrade?",
+    "expected_evidence_page": 1,
+    "expected_answer_keywords": ["20 August 2026", "17:00"],
+    "expected_insufficient_evidence": false,
+    "notes": "Direct date/time lookup from the tender invitation."
+  },
+  {
+    "id": "qa_tender_payment_terms",
+    "name": "Tender payment terms lookup",
+    "eval_type": "qa",
+    "document_title": "demo_tender_solar_microgrid",
+    "question": "What payment period does the tender specify?",
+    "expected_evidence_page": 1,
+    "expected_answer_keywords": ["45 days"],
+    "expected_insufficient_evidence": false,
+    "notes": "Checks page-level payment evidence."
+  },
+  {
+    "id": "qa_contract_acceptance",
+    "name": "Contract draft acceptance criteria lookup",
+    "eval_type": "qa",
+    "document_title": "demo_contract_draft",
+    "question": "What acceptance criteria are in the contract draft?",
+    "expected_evidence_page": 2,
+    "expected_answer_keywords": ["commissioning", "safety certificate"],
+    "expected_insufficient_evidence": false,
+    "notes": "Checks a clause on page 2."
+  },
+  {
+    "id": "qa_contract_dispute_resolution",
+    "name": "Contract draft dispute resolution lookup",
+    "eval_type": "qa",
+    "document_title": "demo_contract_draft",
+    "question": "What dispute resolution process does the contract draft use?",
+    "expected_evidence_page": 2,
+    "expected_answer_keywords": ["Sydney", "arbitration"],
+    "expected_insufficient_evidence": false,
+    "notes": "Checks dispute resolution evidence."
+  },
+  {
+    "id": "qa_revised_amount",
+    "name": "Revised contract amount lookup",
+    "eval_type": "qa",
+    "document_title": "demo_contract_revised",
+    "question": "What is the revised contract amount?",
+    "expected_evidence_page": 1,
+    "expected_answer_keywords": ["AUD 1,350,000"],
+    "expected_insufficient_evidence": false,
+    "notes": "Checks changed amount in the addendum."
+  },
+  {
+    "id": "insufficient_bank_guarantee_number",
+    "name": "Missing bank guarantee number refusal",
+    "eval_type": "insufficient",
+    "document_title": "demo_policy_notice",
+    "question": "What bank guarantee number is required?",
+    "expected_evidence_page": null,
+    "expected_answer_keywords": [],
+    "expected_insufficient_evidence": true,
+    "notes": "The policy notice does not contain a bank guarantee number."
+  },
+  {
+    "id": "insufficient_insurance_policy",
+    "name": "Missing insurance policy refusal",
+    "eval_type": "insufficient",
+    "document_title": "demo_policy_notice",
+    "question": "What cyber coverage certificate ID is required?",
+    "expected_evidence_page": null,
+    "expected_answer_keywords": [],
+    "expected_insufficient_evidence": true,
+    "notes": "The policy notice intentionally lacks cyber coverage certificate details."
+  },
+  {
+    "id": "risk_payment_period_long",
+    "name": "Risk check long payment period",
+    "eval_type": "risk",
+    "document_title": "demo_risky_terms",
+    "question": "Run risk rules for payment terms.",
+    "expected_risk_categories": ["payment_terms"],
+    "expected_risk_keywords": ["Payment period longer than 90 days", "120 days"],
+    "notes": "Flags payment period over 90 days."
+  },
+  {
+    "id": "risk_vague_acceptance",
+    "name": "Risk check vague acceptance",
+    "eval_type": "risk",
+    "document_title": "demo_risky_terms",
+    "question": "Run risk rules for acceptance criteria.",
+    "expected_risk_categories": ["acceptance"],
+    "expected_risk_keywords": ["Acceptance criteria are vague or missing", "satisfactory"],
+    "notes": "Flags subjective acceptance wording."
+  },
+  {
+    "id": "risk_one_sided_liability",
+    "name": "Risk check one-sided liability",
+    "eval_type": "risk",
+    "document_title": "demo_risky_terms",
+    "question": "Run risk rules for liability.",
+    "expected_risk_categories": ["liability"],
+    "expected_risk_keywords": ["Liability clause only constrains one party"],
+    "notes": "Flags supplier-only liability wording."
+  },
+  {
+    "id": "risk_missing_dispute_resolution",
+    "name": "Risk check missing dispute resolution",
+    "eval_type": "risk",
+    "document_title": "demo_risky_terms",
+    "question": "Run risk rules for dispute resolution.",
+    "expected_risk_categories": ["dispute_resolution"],
+    "expected_risk_keywords": ["Missing dispute resolution clause"],
+    "notes": "Risky terms intentionally omit dispute resolution wording."
+  },
+  {
+    "id": "risk_unclear_termination",
+    "name": "Risk check unclear termination",
+    "eval_type": "risk",
+    "document_title": "demo_risky_terms",
+    "question": "Run risk rules for termination.",
+    "expected_risk_categories": ["termination"],
+    "expected_risk_keywords": ["Termination condition is unclear", "without reason"],
+    "notes": "Flags broad termination wording."
+  },
+  {
+    "id": "diff_changed_amount",
+    "name": "Diff changed contract amount",
+    "eval_type": "diff",
+    "document_a_title": "demo_contract_draft",
+    "document_b_title": "demo_contract_revised",
+    "question": "Compare draft and revised contract amount.",
+    "expected_diff_fields": [{"field": "contract_amount", "status": "changed"}],
+    "expected_diff_keywords": ["AUD 1,250,000", "AUD 1,350,000"],
+    "notes": "Detects amount changed between draft and addendum."
+  },
+  {
+    "id": "diff_changed_deadline_payment",
+    "name": "Diff changed deadline and payment terms",
+    "eval_type": "diff",
+    "document_a_title": "demo_contract_draft",
+    "document_b_title": "demo_contract_revised",
+    "question": "Compare deadline and payment term changes.",
+    "expected_diff_fields": [
+      {"field": "bid_deadline", "status": "changed"},
+      {"field": "payment_terms", "status": "changed"}
+    ],
+    "expected_diff_keywords": ["20 August 2026", "22 August 2026", "60 days", "120 days"],
+    "notes": "Detects schedule and payment changes."
+  },
+  {
+    "id": "diff_missing_acceptance",
+    "name": "Diff missing acceptance criteria",
+    "eval_type": "diff",
+    "document_a_title": "demo_contract_draft",
+    "document_b_title": "demo_contract_revised",
+    "question": "Compare acceptance criteria between drafts.",
+    "expected_diff_fields": [{"field": "acceptance_criteria", "status": "uncertain"}],
+    "expected_diff_keywords": ["commissioning"],
+    "notes": "Revised addendum removes detailed acceptance criteria."
+  },
+  {
+    "id": "agent_evidence_search",
+    "name": "Agent routes normal question to evidence search",
+    "eval_type": "agent",
+    "document_title": "demo_tender_solar_microgrid",
+    "question": "What is the bid deadline?",
+    "expected_evidence_page": 1,
+    "expected_answer_keywords": ["20 August 2026"],
+    "expected_tools": ["evidence_search_tool", "guarded_llm_synthesis"],
+    "expected_insufficient_evidence": false,
+    "notes": "Normal grounded question should search evidence and synthesize from evidence."
+  },
+  {
+    "id": "agent_risk_review",
+    "name": "Agent routes risk review to risk tool",
+    "eval_type": "agent",
+    "document_title": "demo_risky_terms",
+    "question": "Run a risk review for this tender.",
+    "expected_tools": ["risk_rule_check_tool", "evidence_search_tool"],
+    "expected_answer_keywords": [],
+    "expected_insufficient_evidence": false,
+    "notes": "Risk objective should call the risk rule tool and still ground with evidence."
+  },
+  {
+    "id": "agent_compare_contracts",
+    "name": "Agent routes comparison to diff tool",
+    "eval_type": "agent",
+    "document_a_title": "demo_contract_draft",
+    "document_b_title": "demo_contract_revised",
+    "question": "Compare these two contracts for differences.",
+    "expected_tools": ["cross_doc_diff_tool"],
+    "expected_answer_keywords": ["Comparison completed"],
+    "expected_insufficient_evidence": false,
+    "notes": "Compare objective should use the diff tool path."
+  }
+]

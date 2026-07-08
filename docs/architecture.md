@@ -35,6 +35,8 @@ flowchart LR
 - `app/services/field_extractor.py`: simple regex field extraction.
 - `app/services/diff.py`: structured cross-document field comparison.
 - `app/services/agent.py`: lightweight tool routing and trace logging.
+- `app/evaluation/run_eval.py`: deterministic eval runner for smoke and demo datasets.
+- `app/evaluation/metrics.py`: boolean metric checks for retrieval, answer keywords, insufficient evidence, risk, diff, and tool routing.
 
 ## Frontend Pages
 
@@ -44,6 +46,14 @@ flowchart LR
 - `/risk`: rule-based risk review.
 - `/compare`: cross-document field comparison table.
 - `/agent-trace`: agent objective runner and tool call trace viewer.
+
+## Demo and Evaluation Assets
+
+- `data/sample_docs/sample_tender.*`: minimal smoke sample.
+- `data/sample_docs/demo_pack/`: synthetic tender, contract draft, revised addendum, risky terms, and policy notice.
+- `data/eval_cases/rag_smoke.json`: small smoke eval.
+- `data/eval_cases/rag_demo.json`: interview-ready eval covering evidence Q&A, insufficient evidence, risk rules, cross-document diff, and agent routing.
+- `docs/demo_walkthrough.md`: repeatable demo flow.
 
 ## Phase 2.2 RAG Design
 

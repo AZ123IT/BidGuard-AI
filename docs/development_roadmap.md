@@ -31,6 +31,14 @@
 - Eval output with retrieval method, average score, provider mode, and database mode.
 - Documentation for SQLite fallback, PostgreSQL pgvector mode, and optional real provider validation.
 
+## Phase 2.3 Included
+
+- Synthetic tender/contract demo pack with five small text documents.
+- Expanded `rag_demo.json` eval dataset covering Q&A, insufficient evidence, risk rules, diff, and agent routing.
+- Eval runner CLI support for `--dataset` and optional `--output-json`.
+- Metric summary for retrieval, evidence page, answer keyword, insufficient-evidence, tool-call, risk, and diff checks.
+- Demo walkthrough documentation for interviews.
+
 ## Next Phase
 
 - Add more realistic public-document eval cases.

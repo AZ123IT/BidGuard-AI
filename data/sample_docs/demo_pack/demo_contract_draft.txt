@@ -1,0 +1,16 @@
+=== Page 1 ===
+Document type: Contract draft.
+Project name: Harbor Solar Microgrid Upgrade.
+Buyer: Harbor City Council.
+Supplier: SunPeak Energy Pty Ltd.
+Bid deadline: 20 August 2026 at 17:00.
+Opening time: 20 August 2026 at 17:30.
+Contract amount: AUD 1,250,000 fixed price.
+Payment terms: The purchaser shall pay the supplier within 60 days after invoice approval.
+Delivery date: 20 December 2026.
+
+=== Page 2 ===
+Acceptance criteria: Site acceptance requires successful commissioning, safety certificate delivery, and written sign-off against the technical specification.
+Liability clause: Supplier liability is capped at AUD 1,250,000 and purchaser liability is limited to unpaid accepted work.
+Dispute resolution: The parties will mediate in Sydney before arbitration under ACICA rules.
+Termination condition: Either party may terminate for uncured material breach after 14 days written notice.
