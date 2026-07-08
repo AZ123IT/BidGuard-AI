@@ -16,6 +16,8 @@ Backend:
 
 ```bash
 cd "/Users/kaisa/Downloads/BidGuard AI/backend"
+python3 -m venv .venv
+.venv/bin/python -m pip install -r requirements-dev.txt
 cp .env.example .env
 .venv/bin/uvicorn app.main:app --reload --port 8000
 ```
@@ -24,11 +26,73 @@ Frontend:
 
 ```bash
 cd "/Users/kaisa/Downloads/BidGuard AI/frontend"
+npm install
 cp .env.example .env.local
 npm run dev
 ```
 
 Open `http://localhost:3000`.
+
+## Final Demo Script
+
+Use this sequence for a short interview demo:
+
+1. Start the backend.
+2. Start the frontend.
+3. Open `http://localhost:3000/documents`.
+4. Upload `data/sample_docs/sample_tender.pdf`.
+5. Open `http://localhost:3000/qa`, select the uploaded tender, and ask:
+
+```text
+What is the bid deadline?
+```
+
+6. Show the answer, page number, evidence snippet, retrieval score, retrieval method, and synthesis status.
+7. Ask an unsupported question:
+
+```text
+What bank guarantee number is required?
+```
+
+8. Show the exact insufficient-evidence response.
+9. Run the demo eval to seed richer synthetic documents:
+
+```bash
+cd "/Users/kaisa/Downloads/BidGuard AI/backend"
+.venv/bin/python -m app.evaluation.run_eval --dataset ../data/eval_cases/rag_demo.json
+```
+
+10. Open `http://localhost:3000/risk`, select `demo_risky_terms`, and run risk review.
+11. Open `http://localhost:3000/compare`, compare `demo_contract_draft` with `demo_contract_revised`, and show changed amount, deadline, payment terms, and acceptance criteria.
+12. Open `http://localhost:3000/agent-trace`, run a normal question, a risk review request, and a compare request, then show the tool calls.
+13. Run local verification:
+
+```bash
+cd "/Users/kaisa/Downloads/BidGuard AI"
+python3 scripts/verify_all.py
+```
+
+14. If Docker is available, run pgvector smoke:
+
+```bash
+docker compose up -d postgres
+cd backend
+DATABASE_URL=postgresql+psycopg://bidguard:bidguard@localhost:5432/bidguard \
+EMBEDDING_PROVIDER=local \
+EMBEDDING_DIMENSION=64 \
+LLM_PROVIDER=local_fake \
+.venv/bin/python scripts/smoke_pgvector.py
+cd ..
+docker compose stop postgres
+```
+
+Good example questions from the demo dataset:
+
+- `What is the bid deadline for the Harbor Solar Microgrid Upgrade?`
+- `What payment period does the tender specify?`
+- `What acceptance criteria are in the contract draft?`
+- `What dispute resolution process does the contract draft use?`
+- `What cyber coverage certificate ID is required?`
 
 ## Quick Local Demo Flow
 

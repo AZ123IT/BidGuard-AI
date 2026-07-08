@@ -6,6 +6,18 @@ BidGuard AI is an evidence-first tender and contract document review agent. It i
 
 It helps a user upload tender or contract documents, retrieve page-level evidence, answer document questions, run deterministic procurement risk checks, compare two document versions, and inspect the agent tool trace behind each review.
 
+## 30-Second Explanation
+
+BidGuard AI is an evidence-first RAG app for reviewing tender and contract documents. It parses uploaded PDFs, stores page-aware chunks, answers questions with citations, refuses unsupported questions, runs deterministic procurement risk checks, compares draft changes, and logs agent tool calls. The project demonstrates full-stack AI engineering rather than legal advice: FastAPI, Next.js, SQLAlchemy, SQLite fallback, PostgreSQL pgvector, provider abstractions, guarded LLM synthesis, and evaluation coverage.
+
+## 2-Minute Technical Explanation
+
+The system starts with document ingestion. A PDF is parsed with PyMuPDF, chunked with page metadata, embedded through either a local deterministic provider or an OpenAI-compatible provider, and stored in the database. SQLite is the default path and stores JSON embeddings for easy local demos. PostgreSQL adds a pgvector column for a more realistic vector retrieval path.
+
+At query time, BidGuard AI retrieves relevant chunks and applies an evidence sufficiency gate. If evidence is weak or empty, it returns the fixed insufficient-evidence sentence and does not call the LLM. If evidence is sufficient, guarded synthesis answers only from the retrieved snippets and preserves citations. The agent layer stays intentionally lightweight: it routes to evidence search, risk rule checking, cross-document diff, or report generation, then stores traceable tool calls.
+
+The project also includes an evaluation story. There is a smoke eval, an 18-case synthetic demo eval, provider smoke validation, pgvector smoke validation, and a root verification command. Metrics cover retrieval hit, evidence page hit, insufficient-evidence correctness, answer keywords, risk categories, diff fields, tool-call correctness, provider mode, database mode, and retrieval method.
+
 ## Problem
 
 Tender and contract review often requires checking the same facts across long documents: payment terms, bid deadlines, acceptance criteria, liability wording, dispute resolution, and changed clauses between drafts. A generic PDF chatbot can answer some questions, but it often hides retrieval quality, misses deterministic checks, and can fabricate unsupported citations.
@@ -103,6 +115,14 @@ The eval runner covers:
 
 Current metrics include retrieval hit, evidence page hit, answer keyword hit, insufficient-evidence correctness, risk category/keyword hit, diff field/keyword hit, tool-call correctness, average score, provider mode, database mode, and observed retrieval methods.
 
+## PostgreSQL + pgvector Story
+
+The pgvector path is there to show that the project can move beyond toy local search. In PostgreSQL mode, chunks keep their JSON embedding metadata and also populate `embedding_vector`. The smoke script verifies the extension, vector column type, stored vector count, answerable retrieval, `retrieval_method: "pgvector"`, and the exact insufficient-evidence fallback.
+
+## Local Fallback Story
+
+SQLite mode is intentionally retained because it makes the project easy to run on any laptop without Docker or API keys. It uses local deterministic embeddings and hybrid retrieval, which is stable for tests and demos. It is clearly documented as a fallback, not as a claim of production-grade semantic retrieval.
+
 ## Feature Matrix
 
 | Feature | Status | Notes |
@@ -142,6 +162,23 @@ Current metrics include retrieval hit, evidence page hit, answer keyword hit, in
 - Risk rules are deterministic checks, not legal analysis.
 - OCR and PDF visual highlighting are not implemented yet.
 - Real provider validation requires user-supplied API credentials in environment variables.
+
+## Possible Interview Q&A
+
+**Why not just call an LLM over the whole PDF?**
+The goal is traceability. BidGuard AI retrieves page-level evidence first, exposes snippets and scores, and refuses unsupported questions instead of relying on hidden prompt context.
+
+**How do you prevent fabricated citations?**
+The backend only returns citations from retrieved chunks. If evidence is weak or empty, it skips synthesis and returns the fixed fallback sentence.
+
+**Why keep SQLite if pgvector exists?**
+SQLite keeps the demo zero-config and test-friendly. PostgreSQL + pgvector remains available for the realistic vector path.
+
+**What does the agent actually do?**
+It is a lightweight router over real tools: evidence search, risk rule check, cross-document diff, and report generation. It is not an overbuilt multi-agent system.
+
+**What would you improve next?**
+I would validate a real provider, add public tender PDFs, add CI pgvector tests, improve field extraction with layout/table parsing, and add PDF evidence highlighting later.
 
 ## What I Would Improve Next
 

@@ -1,76 +1,121 @@
 # BidGuard AI
 
-BidGuard AI is an evidence-first tender and contract document review agent built as a personal AI engineering portfolio project. It demonstrates RAG-style document retrieval, PDF parsing, page-level citations, deterministic risk rules, cross-document comparison, agent tool calls, evaluation planning, and full-stack engineering.
+BidGuard AI is an evidence-first tender and contract document review agent built as a personal AI engineering portfolio project.
 
-It is not an enterprise SaaS system and does not provide professional legal advice.
+It demonstrates document parsing, RAG retrieval, page-level evidence citation, guarded LLM synthesis, rule-based risk checks, cross-document comparison, lightweight agent tool-calling, evaluation, and full-stack engineering.
 
-## Portfolio Snapshot
+BidGuard AI is not an enterprise SaaS platform and does not provide professional legal advice.
 
-- Evidence-first RAG: every answer includes retrieved document snippets, page numbers, scores, and retrieval method when evidence is available.
-- Guarded synthesis: the backend skips LLM synthesis when retrieved evidence is weak or missing.
-- Real RAG infrastructure: SQLite fallback for local demos, PostgreSQL + pgvector for vector retrieval, and provider abstractions for local or OpenAI-compatible models.
-- Agent workflow: evidence search, risk checks, cross-document diff, report generation, and tool-call trace logging.
-- Evaluation-ready: smoke eval, 18-case demo eval, provider smoke, pgvector smoke, and a single verification script.
+## Project Status
 
-See `docs/interview_brief.md` for the interview narrative, feature matrix, limitations, and resume bullets.
+| Category | Status | Notes |
+| --- | --- | --- |
+| Core app | Implemented | FastAPI backend and Next.js frontend. |
+| Evidence Q&A | Implemented | Answers include cited snippets, page numbers, scores, and retrieval method. |
+| Risk review | Implemented | Deterministic procurement risk rules. |
+| Cross-document diff | Implemented | Regex field extraction and structured comparison rows. |
+| Agent trace | Implemented | Tool calls and run traces are logged. |
+| SQLite mode | Local/fallback | Default zero-config mode with JSON embeddings and hybrid retrieval. |
+| PostgreSQL + pgvector | Implemented | Verified by smoke script when Docker is available. |
+| Real providers | Optional | OpenAI-compatible embedding and LLM providers are validated only when env vars are set. |
+| OCR | Future | Not implemented. |
+| PDF highlighting | Future | Evidence snippets exist; visual highlights are future work. |
 
-## Features
+## Key Features
 
 - Upload public tender or contract PDFs.
-- Parse text with PyMuPDF and store page-aware chunks.
-- Ask questions and receive answers with cited document evidence.
-- Refuse unsupported answers when retrieved evidence is insufficient.
-- Run built-in procurement risk rules.
-- Compare extracted fields across two documents.
-- Inspect agent runs and tool-call traces.
-- Use SQLite locally or PostgreSQL through `DATABASE_URL`.
-- Generate real chunk embeddings through a provider abstraction.
-- Use deterministic local embeddings and local fake synthesis for tests.
-- Use guarded OpenAI-compatible embedding/LLM providers when configured.
-- Validate local or real providers with an optional smoke command.
-- Run a small RAG evaluation command.
+- Parse documents with PyMuPDF and store page-aware chunks.
+- Ask questions and receive answers grounded in cited evidence.
+- Return a deterministic insufficient-evidence fallback when support is weak.
+- Run built-in risk checks for common procurement review issues.
+- Compare extracted fields across two document versions.
+- Inspect agent runs and tool calls.
+- Run smoke evals, demo evals, provider smoke, and pgvector smoke.
+- Use deterministic local providers by default; optionally validate real OpenAI-compatible providers.
 
-## Feature Matrix
+## Architecture
 
-| Feature | Status | Notes |
-| --- | --- | --- |
-| PDF/TXT upload and seeding | Implemented | PDF upload through UI/API; text seeding for eval demos. |
-| Document parsing and chunking | Implemented | PyMuPDF plus page-aware chunks. |
-| Local embeddings | Fallback/local | Deterministic, no-key, repeatable tests. |
-| SQLite retrieval | Fallback/local | JSON embeddings with hybrid retrieval. |
-| PostgreSQL pgvector retrieval | Implemented | Verified by smoke script. |
-| Guarded LLM synthesis | Implemented | Evidence gate prevents unsupported synthesis. |
-| OpenAI-compatible providers | Optional real provider | Smoke validation skips gracefully without keys. |
-| Risk review | Implemented | Rule-based procurement checks. |
-| Cross-document diff | Implemented | Regex field extraction and structured differences. |
-| Agent trace | Implemented | Agent runs and tool calls are logged. |
-| Evaluation runner | Implemented | Smoke and demo eval datasets. |
-| OCR | Future | Not implemented. |
-| PDF evidence highlighting | Future | Snippets exist; visual highlights are future work. |
-
-## Project Structure
-
-```text
-backend/          FastAPI API, SQLAlchemy models, services, tests, Alembic
-frontend/         Next.js App Router UI
-docs/             Architecture, database, agent, evaluation, roadmap docs
-data/sample_docs/ Sample tender text/PDF
-data/sample_docs/demo_pack/ Synthetic tender/contract demo pack
-data/uploads/     Local uploaded document storage
-docker-compose.yml
+```mermaid
+flowchart TD
+  UI["Next.js frontend"] --> API["FastAPI API"]
+  API --> Upload["Document upload"]
+  Upload --> Parser["PDF/text parser"]
+  Parser --> Chunker["Page-aware chunker"]
+  Chunker --> Embed["Embedding provider"]
+  Embed --> Store["document_chunks"]
+  Store --> SQLite["SQLite JSON fallback"]
+  Store --> PG["PostgreSQL + pgvector"]
+  SQLite --> Retrieval["Hybrid/vector retrieval"]
+  PG --> Retrieval
+  Retrieval --> Gate["Evidence sufficiency gate"]
+  Gate -->|sufficient| LLM["Guarded LLM synthesis"]
+  Gate -->|weak or empty| Refusal["Exact fallback response"]
+  LLM --> Answer["Answer with citations"]
+  Refusal --> Answer
+  API --> Agent["Tool-calling agent"]
+  Agent --> Tools["Evidence / risk / diff / report tools"]
+  Tools --> Trace["Agent trace"]
 ```
 
-## Backend Setup
+## Tech Stack
+
+- Frontend: Next.js, TypeScript, Tailwind CSS.
+- Backend: FastAPI, Python, SQLAlchemy, Alembic.
+- Storage: SQLite by default, optional PostgreSQL with pgvector.
+- Parsing: PyMuPDF.
+- AI/RAG: local deterministic embeddings, OpenAI-compatible provider abstraction, guarded synthesis.
+- Evaluation: JSON eval cases, smoke scripts, verification script.
+
+## RAG Pipeline
+
+1. Parse uploaded PDF or seeded demo text into page-level text.
+2. Chunk text while preserving document id, title, page number, and chunk index.
+3. Generate embeddings through local deterministic or OpenAI-compatible providers.
+4. Store embeddings as JSON in SQLite; store `embedding_vector` in PostgreSQL when pgvector is enabled.
+5. Retrieve evidence with hybrid scoring and return score metadata.
+6. Run LLM synthesis only after retrieved evidence passes the sufficiency gate.
+7. Return answer, evidence snippets, document title, page number, score, retrieval method, and synthesis metadata.
+
+If evidence is weak or missing, the backend returns exactly:
+
+```text
+The uploaded documents do not contain enough evidence to answer this question reliably.
+```
+
+## Agent Workflow
+
+The agent is intentionally lightweight:
+
+- Normal document questions use `evidence_search_tool`.
+- Risk/review requests use `risk_rule_check_tool`.
+- Compare requests use `cross_doc_diff_tool`.
+- Report requests can use `report_generator_tool`.
+- Tool calls are logged with status, latency, and output summaries.
+
+## Quick Start
+
+Backend:
 
 ```bash
-cd backend
+cd "/Users/kaisa/Downloads/BidGuard AI/backend"
 python3 -m venv .venv
 .venv/bin/python -m pip install -r requirements-dev.txt
 cp .env.example .env
 .venv/bin/uvicorn app.main:app --reload --port 8000
 ```
 
-Default local database:
+Frontend:
+
+```bash
+cd "/Users/kaisa/Downloads/BidGuard AI/frontend"
+npm install
+cp .env.example .env.local
+npm run dev
+```
+
+Open `http://localhost:3000`.
+
+Default local mode needs no API keys:
 
 ```text
 DATABASE_URL=sqlite:///./bidguard.db
@@ -78,154 +123,113 @@ EMBEDDING_PROVIDER=local
 LLM_PROVIDER=local_fake
 ```
 
-Optional PostgreSQL:
-
-```bash
-# from the project root
-docker compose up -d postgres
-```
-
-Provider smoke validation works without PostgreSQL and without API keys in local mode:
-
-```bash
-cd backend
-.venv/bin/python scripts/smoke_providers.py
-```
-
-For local pgvector verification without external API keys:
-
-```bash
-cd backend
-DATABASE_URL=postgresql+psycopg://bidguard:bidguard@localhost:5432/bidguard \
-EMBEDDING_PROVIDER=local \
-EMBEDDING_DIMENSION=64 \
-LLM_PROVIDER=local_fake \
-.venv/bin/alembic upgrade head
-
-DATABASE_URL=postgresql+psycopg://bidguard:bidguard@localhost:5432/bidguard \
-EMBEDDING_PROVIDER=local \
-EMBEDDING_DIMENSION=64 \
-LLM_PROVIDER=local_fake \
-.venv/bin/python scripts/smoke_pgvector.py
-```
-
-For a real OpenAI-compatible embedding provider, set these before the first PostgreSQL migration or before the app creates the `embedding_vector` column:
-
-```bash
-export DATABASE_URL=postgresql+psycopg://bidguard:bidguard@localhost:5432/bidguard
-export EMBEDDING_PROVIDER=openai_compatible
-export EMBEDDING_API_KEY=your_embedding_key_here
-export EMBEDDING_BASE_URL=https://your-openai-compatible-base-url
-export EMBEDDING_MODEL=your_embedding_model
-export EMBEDDING_DIMENSION=your_embedding_dimension
-```
-
-Optional guarded LLM synthesis uses:
-
-```bash
-export LLM_PROVIDER=openai_compatible
-export LLM_API_KEY=your_llm_key_here
-export LLM_BASE_URL=https://your-openai-compatible-base-url
-export LLM_MODEL=your_llm_model
-```
-
-Validate configured real providers before running a demo:
-
-```bash
-cd backend
-.venv/bin/python scripts/smoke_providers.py
-```
-
-For PostgreSQL, pgvector is enabled by `docker-compose.yml` and the Alembic/runtime DDL adds an optional `embedding_vector` column. The vector dimension must match `EMBEDDING_DIMENSION`; if you change dimensions after creating the column, recreate the local Postgres volume or migrate the column intentionally. SQLite remains the default and stores embeddings in JSON.
-
-## Frontend Setup
-
-```bash
-cd frontend
-npm install
-cp .env.example .env.local
-npm run dev
-```
-
-Open `http://localhost:3000`. The backend should be running at `http://localhost:8000`.
-
-## Environment Variables
-
-Backend:
-
-- `DATABASE_URL`: SQLite or PostgreSQL connection string.
-- `UPLOAD_DIR`: uploaded file storage directory.
-- `CORS_ORIGINS`: comma-separated frontend origins.
-- `EMBEDDING_PROVIDER`: `local` or `openai_compatible`.
-- `EMBEDDING_MODEL`: embedding model name.
-- `EMBEDDING_API_KEY`: embedding provider API key for real mode.
-- `EMBEDDING_BASE_URL`: OpenAI-compatible embedding API base URL.
-- `EMBEDDING_DIMENSION`: embedding vector dimension.
-- `LLM_PROVIDER`: `local_fake` or `openai_compatible`.
-- `LLM_MODEL`: chat model name.
-- `LLM_API_KEY`: LLM API key for real synthesis.
-- `LLM_BASE_URL`: OpenAI-compatible chat API base URL.
-- `LLM_TEMPERATURE`: synthesis temperature, default `0`.
-- `OPENAI_API_KEY`, `OPENAI_BASE_URL`, `OPENAI_MODEL`: compatibility fallbacks.
-
-Frontend:
-
-- `NEXT_PUBLIC_API_URL`: FastAPI base URL.
-
 ## Verification
 
-Run the default all-in-one verification command from the project root:
+Run the default verification suite from the project root:
 
 ```bash
+cd "/Users/kaisa/Downloads/BidGuard AI"
 python3 scripts/verify_all.py
 ```
 
-It runs backend tests, Ruff, provider smoke, smoke eval, demo eval, frontend typecheck, and frontend build. It does not require Docker or real API keys.
+It runs:
 
-Optional pgvector verification:
-
-```bash
-python3 scripts/verify_all.py --with-pgvector
-```
+- backend tests,
+- backend Ruff,
+- provider smoke,
+- smoke eval,
+- demo eval,
+- frontend typecheck,
+- frontend build.
 
 Equivalent individual commands:
 
 ```bash
-cd backend && .venv/bin/python -m pytest tests -q
-cd backend && .venv/bin/ruff check .
-cd backend && .venv/bin/python scripts/smoke_providers.py
-cd backend && .venv/bin/python -m app.evaluation.run_eval
-cd backend && .venv/bin/python -m app.evaluation.run_eval --dataset ../data/eval_cases/rag_demo.json
-cd frontend && npm run typecheck
-cd frontend && npm run build
-```
-
-Run the RAG smoke eval:
-
-```bash
-cd backend
+cd "/Users/kaisa/Downloads/BidGuard AI/backend"
+.venv/bin/python -m pytest tests -q
+.venv/bin/ruff check .
+.venv/bin/python scripts/smoke_providers.py
 .venv/bin/python -m app.evaluation.run_eval
-```
-
-Run the interview demo eval:
-
-```bash
-cd backend
 .venv/bin/python -m app.evaluation.run_eval --dataset ../data/eval_cases/rag_demo.json
+
+cd "/Users/kaisa/Downloads/BidGuard AI/frontend"
+npm run typecheck
+npm run build
 ```
 
-Optionally write a local JSON report. Generated reports are ignored by Git:
+## Demo Workflow
+
+See `docs/demo_walkthrough.md` for the full step-by-step demo.
+
+Fast local path:
+
+1. Start backend and frontend.
+2. Upload `data/sample_docs/sample_tender.pdf`.
+3. Ask `What is the bid deadline?`.
+4. Ask `What bank guarantee number is required?` to trigger insufficient evidence.
+5. Run risk review.
+6. Compare demo contract draft vs revised addendum after seeding demo docs through eval.
+7. Inspect agent trace.
+8. Run `python3 scripts/verify_all.py`.
+
+Good demo questions:
+
+- `What is the bid deadline?`
+- `What payment period does the tender specify?`
+- `What acceptance criteria are in the contract draft?`
+- `What bank guarantee number is required?`
+
+## Evaluation
+
+Datasets:
+
+- `data/eval_cases/rag_smoke.json`: 2-case smoke set.
+- `data/eval_cases/rag_demo.json`: 18-case demo set covering evidence Q&A, insufficient evidence, risk rules, cross-document diff, and agent routing.
+
+Metrics include retrieval hit, evidence page hit, answer keyword hit, insufficient-evidence correctness, risk category/keyword hit, diff field/keyword hit, tool-call correctness, average score, provider mode, database mode, and retrieval method.
+
+## Provider Modes
+
+Local mode:
 
 ```bash
-.venv/bin/python -m app.evaluation.run_eval \
-  --dataset ../data/eval_cases/rag_demo.json \
-  --output-json ../data/eval_reports/latest_eval.json
+cd "/Users/kaisa/Downloads/BidGuard AI/backend"
+EMBEDDING_PROVIDER=local \
+EMBEDDING_DIMENSION=64 \
+LLM_PROVIDER=local_fake \
+.venv/bin/python scripts/smoke_providers.py
 ```
 
-Run the pgvector smoke verification after starting PostgreSQL:
+Real provider mode is optional. Use placeholders only in docs and set real keys in an untracked `.env` or shell environment:
 
 ```bash
-cd backend
+EMBEDDING_PROVIDER=openai_compatible
+EMBEDDING_API_KEY=your_embedding_key_here
+EMBEDDING_BASE_URL=https://your-openai-compatible-base-url
+EMBEDDING_MODEL=your_embedding_model
+EMBEDDING_DIMENSION=your_embedding_dimension
+
+LLM_PROVIDER=openai_compatible
+LLM_API_KEY=your_llm_key_here
+LLM_BASE_URL=https://your-openai-compatible-base-url
+LLM_MODEL=your_llm_model
+```
+
+If keys are missing, provider smoke reports `skipped` for real providers and exits successfully.
+
+## PostgreSQL + pgvector
+
+Start PostgreSQL:
+
+```bash
+cd "/Users/kaisa/Downloads/BidGuard AI"
+docker compose up -d postgres
+```
+
+Run pgvector smoke:
+
+```bash
+cd "/Users/kaisa/Downloads/BidGuard AI/backend"
 DATABASE_URL=postgresql+psycopg://bidguard:bidguard@localhost:5432/bidguard \
 EMBEDDING_PROVIDER=local \
 EMBEDDING_DIMENSION=64 \
@@ -233,29 +237,49 @@ LLM_PROVIDER=local_fake \
 .venv/bin/python scripts/smoke_pgvector.py
 ```
 
-Common provider smoke outcomes:
+Or include it in aggregate verification:
 
-- `status: passed`: the selected local or real provider returned a usable response.
-- `status: skipped`: a real provider was selected but required key variables were not set.
-- `Embedding dimension mismatch`: set `EMBEDDING_DIMENSION` to the actual model dimension and recreate or migrate the pgvector column if needed.
-- `returned HTTP ...` or `timed out`: check base URL, model name, API key, and provider availability.
-
-## Evidence-First RAG Behavior
-
-During ingestion, BidGuard AI chunks parsed text and stores an embedding for each chunk. SQLite stores JSON embeddings and uses `hybrid_fallback` retrieval. PostgreSQL stores JSON embeddings plus `embedding_vector` and uses `pgvector` retrieval when the vector column is available. If evidence is weak or missing, the backend skips synthesis and returns:
-
-```text
-The uploaded documents do not contain enough evidence to answer this question reliably.
+```bash
+cd "/Users/kaisa/Downloads/BidGuard AI"
+python3 scripts/verify_all.py --with-pgvector
 ```
 
-When synthesis is enabled, the prompt instructs the LLM to answer only from retrieved evidence and never invent citations. Tests do not require real API keys.
+The vector column dimension must match `EMBEDDING_DIMENSION`. If you change embedding dimensions after creating the PostgreSQL volume, recreate the local volume or migrate the column intentionally.
 
-## Demo Pack
+## Interview Notes
 
-The synthetic demo pack in `data/sample_docs/demo_pack/` includes a tender, contract draft, revised addendum, risky terms document, and policy notice. The expanded eval dataset at `data/eval_cases/rag_demo.json` covers evidence Q&A, insufficient evidence, risk rules, cross-document diff, and agent routing.
+Use `docs/interview_brief.md` for:
 
-See `docs/demo_walkthrough.md` for a repeatable demo script.
+- 30-second and 2-minute explanations,
+- architecture summary,
+- RAG pipeline narrative,
+- agent workflow explanation,
+- evaluation story,
+- resume-ready bullets,
+- likely interview Q&A.
 
-## MVP Boundaries
+See `docs/release_notes_v0_1.md` for the current packaged release summary.
 
-This project intentionally excludes multi-tenancy, payments, approvals, notifications, complex role permissions, and claims of legal advice. The first version favors transparent evidence and deterministic behavior over broad automation.
+## Limitations
+
+- Local embeddings are deterministic hash vectors, not semantic embeddings.
+- SQLite retrieval is a fallback path, not production vector search.
+- Field extraction is regex-based.
+- Risk checks are deterministic signals, not legal analysis.
+- Real provider validation requires user-supplied API credentials.
+- OCR and PDF evidence highlighting are intentionally future work.
+
+## Roadmap
+
+Next useful steps:
+
+- validate a real embedding and LLM provider with local env vars,
+- add public tender PDFs and richer eval cases,
+- add CI coverage for PostgreSQL + pgvector,
+- improve field extraction with layout-aware parsing,
+- add optional OCR as an isolated worker,
+- add PDF page preview and evidence highlight anchors.
+
+## Project Boundaries
+
+BidGuard AI intentionally excludes multi-tenancy, payments, approvals, notifications, complex role permissions, and legal-advice claims. It favors transparent evidence and deterministic evaluation over broad automation.
