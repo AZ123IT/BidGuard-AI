@@ -60,13 +60,33 @@
 - Final demo script with answerable Q&A, insufficient-evidence refusal, risk review, diff, agent trace, eval, and pgvector smoke.
 - v0.1 release notes summarizing included features, verification, limitations, and next steps.
 
+## Phase 3.0 Release Candidate Included
+
+- Lightweight document detail evidence viewer with extracted fields and page-grouped chunk previews.
+- Q&A evidence cards link back to source chunks with page/chunk query parameters.
+- Agent trace page readability improvements for final answer, ordered tools, evidence counts, latency, timestamps, and retrieval methods.
+- Minimal GitHub Actions CI for backend tests, backend Ruff, frontend typecheck, and frontend build without real API keys.
+- README, demo walkthrough, interview brief, architecture, evaluation, database, agent, and release-note cleanup for GitHub/resume readiness.
+
+## Phase 3.5 Real Provider Demo Status
+
+- Added `scripts/real_provider_demo.py` to run provider smoke and then the 18-case demo eval when real OpenAI-compatible embedding and LLM providers are configured.
+- Added `docs/real_provider_demo.md` with the current session result and repeatable commands.
+- Current local status is skipped because no real provider API keys are configured.
+
+## Phase 4 Product Polish Included
+
+- DOCX upload with lightweight text extraction from `word/document.xml`.
+- Markdown review report export from document detail.
+- Better regex field extraction for common procurement synonyms such as `Project Title`, `Procuring Entity`, `Vendor`, `Closing date`, `Total contract value`, and `Net 45 days`.
+
 ## Next Phase
 
 - Add more realistic public-document eval cases.
 - Add pgvector integration tests in a PostgreSQL CI service.
 - Add layout-aware table extraction.
 - Add PDF page preview with evidence highlight anchors.
-- Improve field extraction with layout-aware parsing and table extraction.
+- Improve field extraction with layout-aware parsing, Word layout parsing, tracked-change handling, and table extraction.
 - Add OCR as an isolated optional worker for scanned PDFs.
 
 ## Explicit No-Go Items

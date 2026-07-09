@@ -14,7 +14,7 @@ export function DocumentSelect({
   onChange: (value: number | "") => void;
 }) {
   return (
-    <label className="grid gap-2 text-sm font-bold">
+    <label className="field-label">
       {label}
       <select
         className="control"

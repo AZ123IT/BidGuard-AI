@@ -1,5 +1,6 @@
 from app.services.chunking import chunk_pages
 from app.services.diff import compare_extracted_fields
+from app.services.field_extractor import extract_fields
 from app.services.retrieval import (
     INSUFFICIENT_EVIDENCE_MESSAGE,
     build_evidence_answer,
@@ -43,6 +44,58 @@ def test_evidence_answer_refuses_when_no_relevant_evidence():
 
     assert response["answer"] == INSUFFICIENT_EVIDENCE_MESSAGE
     assert response["evidence"] == []
+
+
+def test_evidence_answer_refuses_partial_keyword_match_for_missing_identifier():
+    response = build_evidence_answer(
+        "What is the vendor tax ID?",
+        [
+            {
+                "document_title": "Contract",
+                "page_number": 1,
+                "text": "Vendor: BrightGrid Pty Ltd. Payment terms: Net 45 days.",
+                "score": 0.2,
+                "keyword_score": 0.3333,
+                "keyword_coverage": 0.3333,
+                "has_keyword_match": True,
+            }
+        ],
+    )
+
+    assert response["answer"] == INSUFFICIENT_EVIDENCE_MESSAGE
+    assert response["evidence"] == []
+
+
+def test_domain_phrase_match_allows_contract_synonyms_without_overmatching_identifier():
+    chunks = [
+        {
+            "id": 1,
+            "document_id": 2,
+            "document_title": "Tender A",
+            "page_number": 1,
+            "text": "Payment terms: The purchaser shall pay the supplier within 45 days after receiving a valid invoice.",
+            "chunk_index": 0,
+        },
+        {
+            "id": 2,
+            "document_id": 2,
+            "document_title": "Tender A",
+            "page_number": 1,
+            "text": "Vendor: BrightGrid Pty Ltd.",
+            "chunk_index": 1,
+        },
+    ]
+
+    payment_results = retrieve_relevant_chunks("What payment period does the tender specify?", chunks)
+    payment_answer = build_evidence_answer("What payment period does the tender specify?", payment_results)
+
+    assert payment_results[0]["phrase_match"] is True
+    assert "45 days" in payment_answer["answer"]
+
+    tax_results = retrieve_relevant_chunks("What is the vendor tax ID?", chunks)
+    tax_answer = build_evidence_answer("What is the vendor tax ID?", tax_results)
+
+    assert tax_answer["answer"] == INSUFFICIENT_EVIDENCE_MESSAGE
 
 
 def test_evidence_answer_prefers_clause_sentence_matching_question():
@@ -99,3 +152,38 @@ def test_compare_extracted_fields_marks_changed_and_uncertain_values():
     assert payment["document_a_value"] == "90 days"
     assert payment["document_b_value"] == "120 days"
     assert liability["status"] == "uncertain"
+
+
+def test_field_extractor_handles_common_contract_synonyms():
+    pages = [
+        {
+            "page_number": 1,
+            "text": (
+                "Project Title: Solar Microgrid Upgrade\n"
+                "Procuring Entity: City Energy Department\n"
+                "Vendor: BrightGrid Pty Ltd\n"
+                "Closing date: 20 August 2026 at 17:00\n"
+                "Tender opening: 20 August 2026 at 17:30\n"
+                "Total contract value: AUD 1,250,000\n"
+                "Net 45 days after invoice approval.\n"
+                "Completion date: 30 November 2026.\n"
+                "Acceptance: commissioning certificate and safety test pass.\n"
+                "Liability cap: supplier liability is capped at the contract amount.\n"
+                "Governing law and dispute forum: courts of New South Wales."
+            ),
+        }
+    ]
+
+    fields = extract_fields(pages)
+
+    assert fields["project_name"]["value"] == "Solar Microgrid Upgrade"
+    assert fields["buyer"]["value"] == "City Energy Department"
+    assert fields["supplier"]["value"] == "BrightGrid Pty Ltd"
+    assert fields["bid_deadline"]["value"] == "20 August 2026 at 17:00"
+    assert fields["opening_time"]["value"] == "20 August 2026 at 17:30"
+    assert fields["contract_amount"]["value"] == "AUD 1,250,000"
+    assert "45 days" in fields["payment_terms"]["value"]
+    assert fields["delivery_date"]["value"] == "30 November 2026"
+    assert "commissioning certificate" in fields["acceptance_criteria"]["value"]
+    assert "supplier liability" in fields["liability_clause"]["value"].lower()
+    assert "New South Wales" in fields["dispute_resolution_clause"]["value"]

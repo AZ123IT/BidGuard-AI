@@ -3,7 +3,7 @@ export function ErrorBanner({ message }: { message: string | null }) {
     return null;
   }
   return (
-    <div className="border border-oxide bg-[#fff4f0] p-3 text-sm font-semibold text-oxide">
+    <div className="mb-4 rounded-lg border border-oxide bg-[#fff4f0] p-3 text-sm font-semibold text-oxide shadow-rule">
       {message}
     </div>
   );

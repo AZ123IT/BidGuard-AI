@@ -47,7 +47,7 @@ export default function ComparePage() {
         body="Field extraction is intentionally simple and marks missing or low-confidence values as uncertain instead of pretending the comparison is complete."
       />
       <ErrorBanner message={error} />
-      <section className="panel grid gap-4 p-4 lg:grid-cols-[1fr_1fr_auto] lg:items-end">
+      <section className="panel-strong grid gap-4 p-5 lg:grid-cols-[1fr_1fr_auto] lg:items-end">
         <DocumentSelect label="Document A" documents={documents} value={documentAId} onChange={setDocumentAId} />
         <DocumentSelect label="Document B" documents={documents} value={documentBId} onChange={setDocumentBId} />
         <button className="btn flex items-center justify-center gap-2" onClick={compare} disabled={busy}>
@@ -59,23 +59,28 @@ export default function ComparePage() {
         {!rows.length ? (
           <EmptyState title="No comparison" body="Run a comparison to see key fields, values, page references, and uncertainty markers." />
         ) : (
-          <div className="overflow-hidden border border-line bg-white/80">
-            <div className="table-grid bg-ink text-xs font-black uppercase tracking-[0.18em] text-white">
+          <div className="overflow-hidden rounded-lg border border-line bg-surface/90 shadow-rule">
+            <div className="grid gap-3 border-b border-line bg-field p-3 text-sm md:grid-cols-3">
+              <CompareMetric label="Changed" value={rows.filter((row) => row.status === "changed").length} />
+              <CompareMetric label="Uncertain" value={rows.filter((row) => row.status === "uncertain").length} />
+              <CompareMetric label="Same" value={rows.filter((row) => row.status === "same").length} />
+            </div>
+            <div className="table-grid border-b border-line bg-field text-xs font-semibold uppercase text-muted">
               <div className="p-3">Field</div>
               <div className="p-3">Document A</div>
               <div className="p-3">Document B</div>
               <div className="p-3">Status</div>
             </div>
             {rows.map((row) => (
-              <div key={row.field} className="table-grid border-t border-line text-sm">
-                <div className="p-3 font-black">{row.field.replaceAll("_", " ")}</div>
+              <div key={row.field} className={`table-grid border-t border-line text-sm ${row.status === "changed" ? "bg-[#fff4f0]/70" : row.status === "uncertain" ? "bg-[#fff9dc]/70" : "bg-surface"}`}>
+                <div className="p-3 font-semibold">{row.field.replaceAll("_", " ")}</div>
                 <div className="p-3">
                   {row.document_a_value ?? "Not found"}
-                  {row.document_a_page ? <span className="ml-2 text-xs font-bold text-steel">p.{row.document_a_page}</span> : null}
+                  {row.document_a_page ? <span className="ml-2 text-xs font-bold text-muted">p.{row.document_a_page}</span> : null}
                 </div>
                 <div className="p-3">
                   {row.document_b_value ?? "Not found"}
-                  {row.document_b_page ? <span className="ml-2 text-xs font-bold text-steel">p.{row.document_b_page}</span> : null}
+                  {row.document_b_page ? <span className="ml-2 text-xs font-bold text-muted">p.{row.document_b_page}</span> : null}
                 </div>
                 <div className="p-3">
                   <StatusBadge value={row.status} />
@@ -85,6 +90,15 @@ export default function ComparePage() {
           </div>
         )}
       </section>
+    </div>
+  );
+}
+
+function CompareMetric({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="rounded-lg border border-line bg-surface p-3">
+      <div className="text-xs font-semibold uppercase text-muted">{label}</div>
+      <div className="mt-1 font-display text-3xl font-bold">{value}</div>
     </div>
   );
 }

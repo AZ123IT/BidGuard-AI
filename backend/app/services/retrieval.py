@@ -39,6 +39,8 @@ STOPWORDS = {
     "who",
 }
 
+MIN_KEYWORD_COVERAGE = 0.5
+
 
 def tokenize(text: str) -> list[str]:
     return [token for token in re.findall(r"[a-z0-9]+", text.lower()) if token not in STOPWORDS]
@@ -70,29 +72,22 @@ def retrieve_relevant_chunks(
     query_tokens = tokenize(question)
     if not query_tokens:
         return []
+    query_terms = set(query_tokens)
     query_counter = Counter(query_tokens)
+    lower_question = question.lower()
     scored: list[dict] = []
     for chunk in chunks:
         text = _get_value(chunk, "text", "")
         text_tokens = tokenize(text)
         if not text_tokens:
             continue
+        text_terms = set(text_tokens)
         text_counter = Counter(text_tokens)
         raw_overlap = sum(min(count, text_counter[token]) for token, count in query_counter.items())
-        phrase_bonus = 0.0
+        matched_unique_terms = len(query_terms.intersection(text_terms))
+        keyword_coverage = matched_unique_terms / max(len(query_terms), 1)
         lower_text = text.lower()
-        if "bid deadline" in question.lower() and "bid deadline" in lower_text:
-            phrase_bonus += 1.5
-        if "opening time" in question.lower() and "opening time" in lower_text:
-            phrase_bonus += 1.5
-        if "acceptance" in question.lower() and "acceptance criteria" in lower_text:
-            phrase_bonus += 1.5
-        if "payment" in question.lower() and "payment terms" in lower_text:
-            phrase_bonus += 1.5
-        if "dispute" in question.lower() and "dispute resolution" in lower_text:
-            phrase_bonus += 1.5
-        if "contract amount" in question.lower() and "contract amount" in lower_text:
-            phrase_bonus += 1.5
+        phrase_bonus, phrase_match = _domain_phrase_match(lower_question, lower_text)
         keyword_score = (raw_overlap + phrase_bonus) / max(len(set(query_tokens)), 1)
         similarity_score = cosine_similarity(query_embedding, _get_value(chunk, "embedding"))
         if query_embedding is not None and _get_value(chunk, "embedding"):
@@ -112,11 +107,58 @@ def retrieve_relevant_chunks(
                 "score": round(score, 4),
                 "similarity_score": round(max(similarity_score, 0.0), 4),
                 "keyword_score": round(keyword_score, 4),
+                "keyword_coverage": round(keyword_coverage, 4),
+                "phrase_match": phrase_match,
                 "retrieval_method": retrieval_method,
-                "has_keyword_match": keyword_score > 0,
+                "has_keyword_match": matched_unique_terms > 0,
             }
         )
     return sorted(scored, key=lambda item: item["score"], reverse=True)[:limit]
+
+
+def _domain_phrase_match(lower_question: str, lower_text: str) -> tuple[float, bool]:
+    phrase_groups = [
+        (
+            ["bid deadline", "submission deadline", "closing date", "closing time", "deadline"],
+            ["bid deadline", "submission deadline", "closing date", "closing time", "tender closing"],
+        ),
+        (["opening time", "bid opening", "tender opening"], ["opening time", "bid opening", "tender opening"]),
+        (
+            ["payment", "invoice", "payment period"],
+            ["payment terms", "pay the supplier", "pay within", "within 45 days", "within 60 days", "within 90 days"],
+        ),
+        (["acceptance"], ["acceptance criteria", "site acceptance", "acceptance requires"]),
+        (["dispute", "arbitration", "mediation"], ["dispute resolution", "arbitration", "mediation", "court", "jurisdiction"]),
+        (["contract amount", "amount", "contract value", "price"], ["contract amount", "contract value", "fixed price", "amount:"]),
+        (["delivery", "completion date"], ["delivery date", "completion date", "delivery:"]),
+        (["liability"], ["liability clause", "liability cap", "liability is capped"]),
+        (["termination"], ["termination condition", "terminate", "termination"]),
+    ]
+
+    bonus = 0.0
+    matched = False
+    for question_terms, text_terms in phrase_groups:
+        if _contains_any(lower_question, question_terms) and _contains_any(lower_text, text_terms):
+            bonus += 1.5
+            matched = True
+
+    identifier_question = "tax" in lower_question and _contains_any(
+        lower_question,
+        ["id", "identifier", "identification", "number"],
+    )
+    identifier_text = (
+        ("tax" in lower_text and _contains_any(lower_text, ["id", "identifier", "identification", "number"]))
+        or _contains_any(lower_text, ["abn", "acn", "tax file number", "tfn"])
+    )
+    if identifier_question and identifier_text:
+        bonus += 1.5
+        matched = True
+
+    return bonus, matched
+
+
+def _contains_any(text: str, terms: list[str]) -> bool:
+    return any(term in text for term in terms)
 
 
 def retrieve_document_evidence(
@@ -206,25 +248,11 @@ def _try_pgvector_search(
 
 
 def is_evidence_sufficient(evidence: list[dict], min_score: float = 0.05) -> bool:
-    usable_evidence = [
-        item
-        for item in evidence
-        if item.get("score", 0) >= min_score
-        and (
-            item.get("has_keyword_match", item.get("score", 0) > 0)
-            or item.get("retrieval_method") == "pgvector"
-        )
-    ]
-    return bool(usable_evidence)
+    return bool(_usable_evidence(evidence, min_score=min_score))
 
 
 def build_evidence_answer(question: str, evidence: list[dict], min_score: float = 0.05) -> dict:
-    usable_evidence = [
-        item
-        for item in evidence
-        if item.get("score", 0) >= min_score
-        and (item.get("has_keyword_match", item.get("score", 0) > 0) or item.get("retrieval_method") == "pgvector")
-    ]
+    usable_evidence = _usable_evidence(evidence, min_score=min_score)
     if not usable_evidence:
         return {
             "answer": INSUFFICIENT_EVIDENCE_MESSAGE,
@@ -249,6 +277,27 @@ def build_evidence_answer(question: str, evidence: list[dict], min_score: float 
         "llm_synthesis_used": False,
         "synthesis_provider": None,
     }
+
+
+def _usable_evidence(evidence: list[dict], min_score: float) -> list[dict]:
+    usable = []
+    for item in evidence:
+        if item.get("score", 0) < min_score:
+            continue
+        has_keyword_match = item.get("has_keyword_match", item.get("score", 0) > 0)
+        if not has_keyword_match:
+            continue
+        keyword_coverage = item.get("keyword_coverage")
+        if keyword_coverage is None:
+            usable.append(item)
+            continue
+        if (
+            item.get("phrase_match")
+            or keyword_coverage >= MIN_KEYWORD_COVERAGE
+            or item.get("keyword_score", 0) >= 0.75
+        ):
+            usable.append(item)
+    return usable
 
 
 def _best_sentence(question: str, text: str) -> str:

@@ -20,10 +20,12 @@ from app.services.agent import (
     run_agent,
 )
 from app.services.chunking import chunk_pages
+from app.services.docx_parser import extract_docx_pages
 from app.services.embeddings import EmbeddingError, make_embedding_provider
 from app.services.field_extractor import extract_fields
 from app.services.llm import guarded_synthesize_answer, make_llm_provider
 from app.services.pdf_parser import extract_pdf_pages
+from app.services.reporting import generate_review_report
 from app.services.retrieval import retrieve_document_evidence
 
 router = APIRouter(prefix="/api")
@@ -56,11 +58,20 @@ async def upload_document(
 ) -> dict:
     is_pdf = file.content_type == "application/pdf" or file.filename.lower().endswith(".pdf")
     is_text = (file.content_type or "").startswith("text/") or file.filename.lower().endswith(".txt")
-    if not is_pdf and not is_text:
-        raise HTTPException(status_code=400, detail="Only PDF and TXT uploads are supported.")
+    is_docx = (
+        file.content_type == "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        or file.filename.lower().endswith(".docx")
+    )
+    if not is_pdf and not is_text and not is_docx:
+        raise HTTPException(status_code=400, detail="Only PDF, DOCX, and TXT uploads are supported.")
     content = await file.read()
     try:
-        pages = extract_pdf_pages(content) if is_pdf else [{"page_number": 1, "text": content.decode("utf-8")}]
+        if is_pdf:
+            pages = extract_pdf_pages(content)
+        elif is_docx:
+            pages = extract_docx_pages(content)
+        else:
+            pages = [{"page_number": 1, "text": content.decode("utf-8")}]
     except UnicodeDecodeError as exc:
         raise HTTPException(status_code=400, detail="The uploaded text file must be UTF-8 encoded.") from exc
     except ValueError as exc:
@@ -102,6 +113,14 @@ def get_document(document_id: int, session: Annotated[Session, Depends(get_sessi
     if not document:
         raise HTTPException(status_code=404, detail="Document not found.")
     return _document_detail(document)
+
+
+@router.get("/documents/{document_id}/report")
+def get_document_report(document_id: int, session: Annotated[Session, Depends(get_session)]) -> dict:
+    document = session.get(Document, document_id)
+    if not document:
+        raise HTTPException(status_code=404, detail="Document not found.")
+    return generate_review_report(document)
 
 
 @router.post("/qa")
@@ -258,12 +277,26 @@ def _document_detail(document: Document) -> dict:
         }
         for field in document.extracted_fields
     }
+    chunks = [
+        {
+            "id": chunk.id,
+            "chunk_index": chunk.chunk_index,
+            "page_number": chunk.page_number,
+            "text": chunk.text,
+            "token_count": chunk.token_count,
+            "embedding_provider": chunk.embedding_provider,
+            "embedding_model": chunk.embedding_model,
+            "embedding_dimension": chunk.embedding_dimension,
+        }
+        for chunk in sorted(document.chunks, key=lambda item: (item.page_number, item.chunk_index))
+    ]
     return {
         **_document_summary(document),
         "chunk_count": len(document.chunks),
         "embedding_status": _embedding_status(document),
         "risk_finding_count": len(document.risk_findings),
         "extracted_fields": fields,
+        "chunks": chunks,
         "error_message": document.error_message,
     }
 
@@ -275,6 +308,7 @@ def _agent_run_view(run: AgentRun) -> dict:
         "status": run.status,
         "answer": run.answer,
         "latency_ms": run.latency_ms,
+        "created_at": run.created_at.isoformat() if run.created_at else None,
         "tool_calls": [
             {
                 "id": call.id,
@@ -282,6 +316,7 @@ def _agent_run_view(run: AgentRun) -> dict:
                 "input_payload": call.input_payload,
                 "output_payload": call.output_payload,
                 "latency_ms": call.latency_ms,
+                "created_at": call.created_at.isoformat() if call.created_at else None,
                 "status": _tool_status(call.output_payload),
                 "evidence_count": _tool_evidence_count(call.output_payload),
             }

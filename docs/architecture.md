@@ -9,7 +9,7 @@ flowchart TD
   UI["Next.js frontend"] --> API["FastAPI API"]
   Eval["Eval runner and smoke scripts"] --> API
   API --> Upload["Document upload / text seed"]
-  Upload --> Parser["PDF parser"]
+  Upload --> Parser["PDF / DOCX / TXT parser"]
   Parser --> Chunker["Page-aware chunker"]
   Chunker --> Embeddings["Embedding provider"]
   Embeddings --> Chunks["document_chunks"]
@@ -35,6 +35,7 @@ flowchart TD
 - `app/api/routes.py`: HTTP endpoints for health, dashboard, documents, Q&A, risk, diff, and agent trace.
 - `app/models.py`: SQLAlchemy entities for documents, chunks, fields, rules, findings, runs, calls, and eval tables.
 - `app/services/pdf_parser.py`: PyMuPDF text extraction.
+- `app/services/docx_parser.py`: lightweight DOCX text extraction from Word document XML.
 - `app/services/chunking.py`: page-preserving chunk generation.
 - `app/services/retrieval.py`: hybrid evidence retrieval, pgvector fallback handling, and evidence-first answer builder.
 - `app/services/embeddings.py`: deterministic local embeddings and OpenAI-compatible embedding provider abstraction.
@@ -43,6 +44,7 @@ flowchart TD
 - `app/services/field_extractor.py`: simple regex field extraction.
 - `app/services/diff.py`: structured cross-document field comparison.
 - `app/services/agent.py`: lightweight tool routing and trace logging.
+- `app/services/reporting.py`: Markdown review report export from stored fields, findings, and chunks.
 - `app/evaluation/run_eval.py`: deterministic eval runner for smoke and demo datasets.
 - `app/evaluation/metrics.py`: boolean metric checks for retrieval, answer keywords, insufficient evidence, risk, diff, and tool routing.
 - `app/evaluation/provider_smoke.py`: optional local or OpenAI-compatible provider validation without requiring PostgreSQL.
@@ -50,8 +52,9 @@ flowchart TD
 ## Frontend Pages
 
 - `/`: dashboard metrics and recent agent runs.
-- `/documents`: PDF upload and document list.
-- `/qa`: document selection, question input, answer and evidence list.
+- `/documents`: PDF, DOCX, and TXT upload and document list.
+- `/documents/[id]`: document metadata, extracted fields, and page-grouped chunks for evidence review.
+- `/qa`: document selection, question input, answer and evidence cards with source chunk links.
 - `/risk`: rule-based risk review.
 - `/compare`: cross-document field comparison table.
 - `/agent-trace`: agent objective runner and tool call trace viewer.
@@ -64,11 +67,11 @@ flowchart TD
 - `data/eval_cases/rag_demo.json`: interview-ready eval covering evidence Q&A, insufficient evidence, risk rules, cross-document diff, and agent routing.
 - `docs/demo_walkthrough.md`: repeatable demo flow.
 
-## Phase 2.2 RAG Design
+## RAG Design
 
 The answer path is deliberately conservative. It retrieves document chunks with hybrid keyword/vector scoring and only synthesizes an answer when backend score gates pass. Otherwise it returns the fixed insufficient-evidence message.
 
-The backend stores page numbers with every chunk. The frontend displays document title, page number, snippet, and score for each cited evidence item.
+The backend stores page numbers and chunk indexes with every chunk. DOCX parsing is text-level, so it currently uses document-level page `1` rather than Word-rendered page numbers. The frontend displays document title, page number, chunk id, snippet, score, retrieval method, and a link back to the source chunk for each cited evidence item.
 
 SQLite stores embeddings in the portable `document_chunks.embedding` JSON field and uses deterministic local embeddings by default. PostgreSQL enables pgvector with an `embedding_vector` column and `ivfflat` vector index. When the vector column is populated, evidence items report `retrieval_method: "pgvector"`; otherwise retrieval falls back to the SQLite-compatible hybrid path.
 

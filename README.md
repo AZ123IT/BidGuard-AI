@@ -11,27 +11,33 @@ BidGuard AI is not an enterprise SaaS platform and does not provide professional
 | Category | Status | Notes |
 | --- | --- | --- |
 | Core app | Implemented | FastAPI backend and Next.js frontend. |
-| Evidence Q&A | Implemented | Answers include cited snippets, page numbers, scores, and retrieval method. |
+| Evidence Q&A | Implemented | Answers include cited snippets, page numbers, chunk ids, scores, and retrieval method. |
 | Risk review | Implemented | Deterministic procurement risk rules. |
 | Cross-document diff | Implemented | Regex field extraction and structured comparison rows. |
 | Agent trace | Implemented | Tool calls and run traces are logged. |
 | SQLite mode | Local/fallback | Default zero-config mode with JSON embeddings and hybrid retrieval. |
 | PostgreSQL + pgvector | Implemented | Verified by smoke script when Docker is available. |
 | Real providers | Optional | OpenAI-compatible embedding and LLM providers are validated only when env vars are set. |
+| GitHub Actions CI | Implemented | Runs backend tests/Ruff and frontend typecheck/build without secrets. |
 | OCR | Future | Not implemented. |
-| PDF highlighting | Future | Evidence snippets exist; visual highlights are future work. |
+| DOCX upload | Implemented | Lightweight text extraction from Word document XML; page reference is document-level. |
+| Review report export | Implemented | Document detail can export a Markdown evidence/risk report. |
+| PDF highlighting | Future | Chunk links exist; pixel-perfect PDF highlights are future work. |
 
 ## Key Features
 
-- Upload public tender or contract PDFs.
-- Parse documents with PyMuPDF and store page-aware chunks.
+- Upload public tender or contract PDF, DOCX, or TXT files.
+- Parse PDFs with PyMuPDF, extract DOCX text, and store page-aware or document-level chunks.
 - Ask questions and receive answers grounded in cited evidence.
+- Open cited evidence chunks from Q&A on the document detail page.
+- Export a Markdown review report from document detail.
 - Return a deterministic insufficient-evidence fallback when support is weak.
 - Run built-in risk checks for common procurement review issues.
 - Compare extracted fields across two document versions.
 - Inspect agent runs and tool calls.
 - Run smoke evals, demo evals, provider smoke, and pgvector smoke.
 - Use deterministic local providers by default; optionally validate real OpenAI-compatible providers.
+- Use GitHub Actions CI for no-secret backend/frontend checks.
 
 ## Architecture
 
@@ -68,13 +74,13 @@ flowchart TD
 
 ## RAG Pipeline
 
-1. Parse uploaded PDF or seeded demo text into page-level text.
+1. Parse uploaded PDF, DOCX, TXT, or seeded demo text into source text.
 2. Chunk text while preserving document id, title, page number, and chunk index.
 3. Generate embeddings through local deterministic or OpenAI-compatible providers.
 4. Store embeddings as JSON in SQLite; store `embedding_vector` in PostgreSQL when pgvector is enabled.
 5. Retrieve evidence with hybrid scoring and return score metadata.
 6. Run LLM synthesis only after retrieved evidence passes the sufficiency gate.
-7. Return answer, evidence snippets, document title, page number, score, retrieval method, and synthesis metadata.
+7. Return answer, evidence snippets, document title, page number, chunk id, score, retrieval method, and synthesis metadata.
 
 If evidence is weak or missing, the backend returns exactly:
 
@@ -94,20 +100,20 @@ The agent is intentionally lightweight:
 
 ## Quick Start
 
-Backend:
+Backend terminal:
 
 ```bash
-cd "/Users/kaisa/Downloads/BidGuard AI/backend"
+cd backend
 python3 -m venv .venv
 .venv/bin/python -m pip install -r requirements-dev.txt
 cp .env.example .env
 .venv/bin/uvicorn app.main:app --reload --port 8000
 ```
 
-Frontend:
+Frontend terminal, from the repository root:
 
 ```bash
-cd "/Users/kaisa/Downloads/BidGuard AI/frontend"
+cd frontend
 npm install
 cp .env.example .env.local
 npm run dev
@@ -128,7 +134,6 @@ LLM_PROVIDER=local_fake
 Run the default verification suite from the project root:
 
 ```bash
-cd "/Users/kaisa/Downloads/BidGuard AI"
 python3 scripts/verify_all.py
 ```
 
@@ -145,17 +150,19 @@ It runs:
 Equivalent individual commands:
 
 ```bash
-cd "/Users/kaisa/Downloads/BidGuard AI/backend"
+cd backend
 .venv/bin/python -m pytest tests -q
 .venv/bin/ruff check .
 .venv/bin/python scripts/smoke_providers.py
 .venv/bin/python -m app.evaluation.run_eval
 .venv/bin/python -m app.evaluation.run_eval --dataset ../data/eval_cases/rag_demo.json
 
-cd "/Users/kaisa/Downloads/BidGuard AI/frontend"
+cd ../frontend
 npm run typecheck
 npm run build
 ```
+
+GitHub Actions runs the backend tests, backend Ruff, frontend typecheck, and frontend build on pushes and pull requests to `main` or `master`. The default CI path uses local deterministic providers and does not require API keys.
 
 ## Demo Workflow
 
@@ -166,18 +173,21 @@ Fast local path:
 1. Start backend and frontend.
 2. Upload `data/sample_docs/sample_tender.pdf`.
 3. Ask `What is the bid deadline?`.
-4. Ask `What bank guarantee number is required?` to trigger insufficient evidence.
-5. Run risk review.
-6. Compare demo contract draft vs revised addendum after seeding demo docs through eval.
-7. Inspect agent trace.
-8. Run `python3 scripts/verify_all.py`.
+4. Open a cited evidence chunk from the Q&A evidence card.
+5. Ask `What is the vendor tax ID?` to trigger insufficient evidence.
+6. Run the demo eval to seed the richer synthetic demo documents.
+7. Run risk review.
+8. Compare demo contract draft vs revised addendum.
+9. Inspect agent trace.
+10. Run `python3 scripts/verify_all.py`.
 
 Good demo questions:
 
-- `What is the bid deadline?`
-- `What payment period does the tender specify?`
-- `What acceptance criteria are in the contract draft?`
-- `What bank guarantee number is required?`
+- `What is the bid deadline for the solar microgrid project?`
+- `What are the payment terms in the contract draft?`
+- `Are the acceptance criteria clearly defined?`
+- `Compare the contract draft and revised contract for amount and payment changes.`
+- `What is the vendor tax ID?`
 
 ## Evaluation
 
@@ -193,7 +203,7 @@ Metrics include retrieval hit, evidence page hit, answer keyword hit, insufficie
 Local mode:
 
 ```bash
-cd "/Users/kaisa/Downloads/BidGuard AI/backend"
+cd backend
 EMBEDDING_PROVIDER=local \
 EMBEDDING_DIMENSION=64 \
 LLM_PROVIDER=local_fake \
@@ -217,19 +227,26 @@ LLM_MODEL=your_llm_model
 
 If keys are missing, provider smoke reports `skipped` for real providers and exits successfully.
 
+Run the repeatable real-provider demo wrapper from the project root:
+
+```bash
+python3 scripts/real_provider_demo.py
+```
+
+It runs provider smoke first. If both real providers pass, it runs the 18-case demo eval and writes an ignored JSON report to `data/eval_reports/latest_real_provider_eval.json`. If real keys are not configured, it exits successfully with `SKIPPED`. See `docs/real_provider_demo.md`.
+
 ## PostgreSQL + pgvector
 
 Start PostgreSQL:
 
 ```bash
-cd "/Users/kaisa/Downloads/BidGuard AI"
 docker compose up -d postgres
 ```
 
 Run pgvector smoke:
 
 ```bash
-cd "/Users/kaisa/Downloads/BidGuard AI/backend"
+cd backend
 DATABASE_URL=postgresql+psycopg://bidguard:bidguard@localhost:5432/bidguard \
 EMBEDDING_PROVIDER=local \
 EMBEDDING_DIMENSION=64 \
@@ -240,7 +257,6 @@ LLM_PROVIDER=local_fake \
 Or include it in aggregate verification:
 
 ```bash
-cd "/Users/kaisa/Downloads/BidGuard AI"
 python3 scripts/verify_all.py --with-pgvector
 ```
 
@@ -260,6 +276,21 @@ Use `docs/interview_brief.md` for:
 
 See `docs/release_notes_v0_1.md` for the current packaged release summary.
 
+## Safe GitHub Push Checklist
+
+Before pushing a public repo:
+
+```bash
+git status
+git log --oneline --max-count=5
+git diff --check
+git remote add origin <YOUR_REPO_URL>
+git branch -M main
+git push -u origin main
+```
+
+Check that `.env` files, local databases, uploaded documents, generated eval reports, `.next/`, `node_modules/`, and API keys are not staged. Keep real provider credentials only in your shell or an untracked `.env`.
+
 ## Limitations
 
 - Local embeddings are deterministic hash vectors, not semantic embeddings.
@@ -267,7 +298,7 @@ See `docs/release_notes_v0_1.md` for the current packaged release summary.
 - Field extraction is regex-based.
 - Risk checks are deterministic signals, not legal analysis.
 - Real provider validation requires user-supplied API credentials.
-- OCR and PDF evidence highlighting are intentionally future work.
+- OCR and pixel-perfect PDF evidence highlighting are intentionally future work.
 
 ## Roadmap
 

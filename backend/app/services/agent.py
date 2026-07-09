@@ -95,6 +95,8 @@ def run_agent(
                 )
                 | {"success": True},
             )
+        elif tool_outputs.get("risk_rule_check_tool"):
+            answer = _answer_from_risk_findings(session, document_ids[0], tool_outputs["risk_rule_check_tool"])
         else:
             answer = build_evidence_answer(
                 objective,
@@ -219,6 +221,49 @@ def _fields_for_document(session: Session, document_id: int) -> dict[str, dict]:
     }
 
 
+def _answer_from_risk_findings(session: Session, document_id: int, findings: list[dict]) -> dict:
+    document = _get_document(session, document_id)
+    evidence = []
+    lines = []
+    for finding in findings:
+        rule_name = finding.get("rule_name", "Risk finding")
+        severity = finding.get("severity", "unknown")
+        category = finding.get("category", "risk")
+        explanation = finding.get("explanation", "")
+        lines.append(f"{severity.title()} {category}: {rule_name}. {explanation}".strip())
+
+        evidence_text = finding.get("evidence_text")
+        if not evidence_text:
+            continue
+        evidence.append(
+            {
+                "chunk_id": None,
+                "document_id": document.id,
+                "document_title": document.title,
+                "page_number": finding.get("page_number") or 1,
+                "text": evidence_text,
+                "score": 1.0,
+                "similarity_score": 0.0,
+                "keyword_score": 1.0,
+                "keyword_coverage": 1.0,
+                "phrase_match": True,
+                "retrieval_method": "risk_rule_check_tool",
+                "has_keyword_match": True,
+            }
+        )
+
+    if not evidence:
+        return build_evidence_answer("", [])
+
+    return {
+        "answer": "Risk review findings:\n" + "\n".join(lines[:6]),
+        "evidence": evidence[:6],
+        "confidence": 1.0,
+        "llm_synthesis_used": False,
+        "synthesis_provider": None,
+    }
+
+
 def _agent_run_to_dict(run: AgentRun) -> dict:
     return {
         "id": run.id,
@@ -226,6 +271,7 @@ def _agent_run_to_dict(run: AgentRun) -> dict:
         "status": run.status,
         "answer": run.answer,
         "latency_ms": run.latency_ms,
+        "created_at": run.created_at.isoformat() if run.created_at else None,
         "tool_calls": [
             {
                 "id": call.id,
@@ -233,6 +279,7 @@ def _agent_run_to_dict(run: AgentRun) -> dict:
                 "input_payload": call.input_payload,
                 "output_payload": call.output_payload,
                 "latency_ms": call.latency_ms,
+                "created_at": call.created_at.isoformat() if call.created_at else None,
                 "status": _tool_status(call.output_payload),
                 "evidence_count": _tool_evidence_count(call.output_payload),
             }

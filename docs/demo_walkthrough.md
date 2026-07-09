@@ -12,20 +12,20 @@ This walkthrough uses only synthetic documents from `data/sample_docs/demo_pack/
 
 ## Start Locally
 
-Backend:
+Backend terminal:
 
 ```bash
-cd "/Users/kaisa/Downloads/BidGuard AI/backend"
+cd backend
 python3 -m venv .venv
 .venv/bin/python -m pip install -r requirements-dev.txt
 cp .env.example .env
 .venv/bin/uvicorn app.main:app --reload --port 8000
 ```
 
-Frontend:
+Frontend terminal, from the repository root:
 
 ```bash
-cd "/Users/kaisa/Downloads/BidGuard AI/frontend"
+cd frontend
 npm install
 cp .env.example .env.local
 npm run dev
@@ -35,44 +35,52 @@ Open `http://localhost:3000`.
 
 ## Final Demo Script
 
-Use this sequence for a short interview demo:
+Use this sequence for a short interview demo. Commands assume you start from the repository root unless a step says otherwise.
 
 1. Start the backend.
 2. Start the frontend.
 3. Open `http://localhost:3000/documents`.
-4. Upload `data/sample_docs/sample_tender.pdf`.
+4. Upload `data/sample_docs/sample_tender.pdf`. You can also upload DOCX or TXT files for lightweight text extraction.
 5. Open `http://localhost:3000/qa`, select the uploaded tender, and ask:
 
 ```text
-What is the bid deadline?
+What is the bid deadline for the solar microgrid project?
 ```
 
-6. Show the answer, page number, evidence snippet, retrieval score, retrieval method, and synthesis status.
-7. Ask an unsupported question:
+6. Show the answer, page number, chunk id, evidence snippet, retrieval score, retrieval method, and synthesis status. Use the evidence card link to open the source chunk in document detail.
+7. From document detail, use `Download report` to export a Markdown review report.
+8. Ask an unsupported question:
 
 ```text
-What bank guarantee number is required?
+What is the vendor tax ID?
 ```
 
-8. Show the exact insufficient-evidence response.
-9. Run the demo eval to seed richer synthetic documents:
+9. Show the exact insufficient-evidence response.
+10. Run the smoke eval, then the demo eval to seed richer synthetic documents:
 
 ```bash
-cd "/Users/kaisa/Downloads/BidGuard AI/backend"
+cd backend
+.venv/bin/python -m app.evaluation.run_eval
 .venv/bin/python -m app.evaluation.run_eval --dataset ../data/eval_cases/rag_demo.json
 ```
 
-10. Open `http://localhost:3000/risk`, select `demo_risky_terms`, and run risk review.
-11. Open `http://localhost:3000/compare`, compare `demo_contract_draft` with `demo_contract_revised`, and show changed amount, deadline, payment terms, and acceptance criteria.
-12. Open `http://localhost:3000/agent-trace`, run a normal question, a risk review request, and a compare request, then show the tool calls.
-13. Run local verification:
+11. Open `http://localhost:3000/risk`, select `demo_risky_terms`, and run risk review.
+12. Open `http://localhost:3000/compare`, compare `demo_contract_draft` with `demo_contract_revised`, and show changed amount, deadline, payment terms, and acceptance criteria.
+13. Open `http://localhost:3000/agent-trace`, run a normal question, a risk review request, and a compare request, then show the tool calls.
+14. From the repository root, run local verification:
 
 ```bash
-cd "/Users/kaisa/Downloads/BidGuard AI"
 python3 scripts/verify_all.py
 ```
 
-14. If Docker is available, run pgvector smoke:
+15. From the backend folder, run provider smoke directly if you want to show provider validation output:
+
+```bash
+cd backend
+.venv/bin/python scripts/smoke_providers.py
+```
+
+16. From the repository root, run pgvector smoke if Docker is available:
 
 ```bash
 docker compose up -d postgres
@@ -89,10 +97,12 @@ docker compose stop postgres
 Good example questions from the demo dataset:
 
 - `What is the bid deadline for the Harbor Solar Microgrid Upgrade?`
-- `What payment period does the tender specify?`
+- `What is the bid deadline for the solar microgrid project?`
+- `What are the payment terms in the contract draft?`
 - `What acceptance criteria are in the contract draft?`
-- `What dispute resolution process does the contract draft use?`
-- `What cyber coverage certificate ID is required?`
+- `Are the acceptance criteria clearly defined?`
+- `Compare the contract draft and revised contract for amount and payment changes.`
+- `What is the vendor tax ID?`
 
 ## Quick Local Demo Flow
 
@@ -111,7 +121,7 @@ What is the bid deadline?
 6. Ask an unsupported question:
 
 ```text
-What bank guarantee number is required?
+What is the vendor tax ID?
 ```
 
 7. Confirm the app returns the exact insufficient-evidence fallback.
@@ -122,7 +132,7 @@ What bank guarantee number is required?
 ## Run SQLite Eval
 
 ```bash
-cd "/Users/kaisa/Downloads/BidGuard AI/backend"
+cd backend
 .venv/bin/python -m app.evaluation.run_eval --dataset ../data/eval_cases/rag_demo.json
 ```
 
@@ -133,7 +143,6 @@ The output reports total cases, passed cases, pass rate, metric summary, retriev
 From the project root:
 
 ```bash
-cd "/Users/kaisa/Downloads/BidGuard AI"
 python3 scripts/verify_all.py
 ```
 
@@ -144,7 +153,7 @@ This runs backend tests, Ruff, provider smoke, smoke eval, demo eval, frontend t
 Local mode is the default interview-safe mode:
 
 ```bash
-cd "/Users/kaisa/Downloads/BidGuard AI/backend"
+cd backend
 EMBEDDING_PROVIDER=local \
 EMBEDDING_DIMENSION=64 \
 LLM_PROVIDER=local_fake \
@@ -156,7 +165,7 @@ It works without API keys, is deterministic, and is suitable for tests. It is no
 Real-provider mode is optional. Export provider keys in the shell or an untracked `.env` file, then run:
 
 ```bash
-cd "/Users/kaisa/Downloads/BidGuard AI/backend"
+cd backend
 EMBEDDING_PROVIDER=openai_compatible \
 EMBEDDING_API_KEY=your_embedding_key_here \
 EMBEDDING_BASE_URL=https://your-openai-compatible-base-url \
@@ -171,10 +180,17 @@ LLM_MODEL=your_llm_model \
 
 If keys are missing, the smoke command prints `skipped` for real providers and exits successfully. If dimensions mismatch, it fails with the expected and actual vector lengths.
 
+To run provider smoke and then the demo eval in one command when real providers are configured:
+
+```bash
+python3 scripts/real_provider_demo.py
+```
+
+The generated eval report is written to `data/eval_reports/latest_real_provider_eval.json`, which is ignored by Git.
+
 ## Run PostgreSQL + pgvector Smoke
 
 ```bash
-cd "/Users/kaisa/Downloads/BidGuard AI"
 docker compose up -d postgres
 
 cd backend
@@ -205,10 +221,11 @@ python3 scripts/verify_all.py --with-pgvector
 
 1. Upload or seed demo documents through eval. The eval runner seeds text documents into the local database for repeatable demos.
 2. Q&A page: select `demo_tender_solar_microgrid` and ask `What is the bid deadline?`.
-3. Insufficient evidence: select `demo_policy_notice` and ask `What bank guarantee number is required?`.
-4. Risk Review: select `demo_risky_terms` and run the risk checker.
-5. Compare: compare `demo_contract_draft` with `demo_contract_revised`.
-6. Agent Trace: run a normal evidence question, a risk review request, and a compare request; inspect tool calls.
+3. Open the evidence card link and show the source chunk on the document detail page. This is chunk-level evidence navigation, not pixel-perfect PDF highlighting.
+4. Insufficient evidence: select `demo_policy_notice` and ask `What is the vendor tax ID?`.
+5. Risk Review: select `demo_risky_terms` and run the risk checker.
+6. Compare: compare `demo_contract_draft` with `demo_contract_revised`.
+7. Agent Trace: run a normal evidence question, a risk review request, and a compare request; inspect tool calls.
 
 ## Interview Metrics To Mention
 

@@ -3,13 +3,21 @@ export function StatusBadge({ value }: { value: string }) {
     value === "high"
       ? "border-oxide bg-[#fff4f0] text-oxide"
       : value === "medium"
-        ? "border-[#8b6b00] bg-[#fff9dc] text-[#6a5100]"
+        ? "border-[var(--amber)] bg-[#fff9dc] text-[#6a5100]"
         : value === "low"
-          ? "border-moss bg-[#eef8ed] text-moss"
-          : "border-line bg-white text-steel";
+          ? "border-success bg-[#eefaf1] text-[#248a3d]"
+          : value === "changed"
+            ? "border-oxide bg-[#fff4f0] text-oxide"
+            : value === "uncertain"
+              ? "border-[var(--amber)] bg-[#fff9dc] text-[#6a5100]"
+              : value === "same" || value === "complete"
+                ? "border-success bg-[#eefaf1] text-[#248a3d]"
+                : "border-line bg-white text-muted";
 
   return (
-    <span className={`inline-flex items-center border px-2 py-1 text-xs font-black uppercase tracking-[0.14em] ${className}`}>
+    <span
+      className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-semibold uppercase ${className}`}
+    >
       {value}
     </span>
   );

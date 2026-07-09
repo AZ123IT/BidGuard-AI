@@ -46,13 +46,20 @@ export default function RiskPage() {
         body="The MVP uses a small built-in rule set for payment periods, vague acceptance, missing dispute resolution, unquantified scoring, and related procurement risks."
       />
       <ErrorBanner message={error} />
-      <section className="panel grid gap-4 p-4 md:grid-cols-[1fr_auto] md:items-end">
+      <section className="panel-strong grid gap-4 p-5 md:grid-cols-[1fr_auto] md:items-end">
         <DocumentSelect label="Document" documents={documents} value={documentId} onChange={setDocumentId} />
         <button className="btn flex items-center justify-center gap-2" onClick={runReview} disabled={busy}>
           <ShieldAlert size={17} />
           {busy ? "Checking" : "Run Risk Review"}
         </button>
       </section>
+      {findings.length ? (
+        <section className="mt-5 grid gap-3 md:grid-cols-3">
+          <RiskMetric label="High" value={findings.filter((finding) => finding.severity === "high").length} tone="high" />
+          <RiskMetric label="Medium" value={findings.filter((finding) => finding.severity === "medium").length} tone="medium" />
+          <RiskMetric label="Low" value={findings.filter((finding) => finding.severity === "low").length} tone="low" />
+        </section>
+      ) : null}
       <section className="mt-6 grid gap-3">
         {!findings.length ? (
           <EmptyState title="No findings loaded" body="Run the risk checker to see structured findings and page evidence." />
@@ -61,18 +68,29 @@ export default function RiskPage() {
             <article key={`${finding.rule_name}-${index}`} className="panel p-4">
               <div className="flex flex-wrap items-center gap-3">
                 <StatusBadge value={finding.severity} />
-                <span className="rounded-full border border-line px-2 py-1 text-xs font-black uppercase tracking-[0.08em] text-steel">
+                <span className="rounded-full border border-line bg-surface px-2 py-1 text-xs font-semibold uppercase text-muted">
                   {finding.category.replaceAll("_", " ")}
                 </span>
-                <div className="font-black">{finding.rule_name}</div>
-                {finding.page_number ? <span className="text-sm font-bold text-steel">Page {finding.page_number}</span> : null}
+                <div className="font-semibold">{finding.rule_name}</div>
+                {finding.page_number ? <span className="text-sm font-bold text-muted">Page {finding.page_number}</span> : null}
               </div>
               <p className="mt-3 text-sm leading-6">{finding.explanation}</p>
-              {finding.evidence_text ? <blockquote className="mt-3 border-l-4 border-signal pl-3 text-sm">{finding.evidence_text}</blockquote> : null}
+              {finding.evidence_text ? <blockquote className="mt-3 evidence-rail rounded-r-lg p-3 text-sm">{finding.evidence_text}</blockquote> : null}
             </article>
           ))
         )}
       </section>
+    </div>
+  );
+}
+
+function RiskMetric({ label, value, tone }: { label: string; value: number; tone: "high" | "medium" | "low" }) {
+  const toneClass =
+    tone === "high" ? "text-oxide" : tone === "medium" ? "text-[#6a5100]" : "text-[#248a3d]";
+  return (
+    <div className="panel p-4">
+      <div className="text-xs font-semibold uppercase text-muted">{label} severity</div>
+      <div className={`mt-2 font-display text-4xl font-bold ${toneClass}`}>{value}</div>
     </div>
   );
 }

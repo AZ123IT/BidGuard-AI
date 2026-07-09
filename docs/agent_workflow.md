@@ -43,7 +43,7 @@ The MVP agent is not a multi-agent system. It uses simple intent routing:
 - If retrieved evidence passes the backend sufficiency gate, call `guarded_llm_synthesis`.
 - If evidence is weak or empty, return the fixed insufficient-evidence response without calling the LLM.
 
-Every tool call is stored in `tool_calls` with input, output, and latency. API trace responses also include status and evidence count summaries. The run is stored in `agent_runs`.
+Every tool call is stored in `tool_calls` with input, output, created timestamp, and latency. API trace responses also include status, evidence count summaries, and retrieval method metadata where evidence is present. The run is stored in `agent_runs`.
 
 ## Evaluation Coverage
 

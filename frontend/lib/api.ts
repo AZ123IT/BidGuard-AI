@@ -12,12 +12,25 @@ export type DocumentSummary = {
 
 export type DocumentDetail = DocumentSummary & {
   chunk_count: number;
+  embedding_status: string;
   risk_finding_count: number;
   extracted_fields: Record<
     string,
     { value: string | null; page_number: number | null; confidence: number; evidence_text: string | null }
   >;
+  chunks: DocumentChunk[];
   error_message: string | null;
+};
+
+export type DocumentChunk = {
+  id: number;
+  chunk_index: number;
+  page_number: number;
+  text: string;
+  token_count: number;
+  embedding_provider: string | null;
+  embedding_model: string | null;
+  embedding_dimension: number | null;
 };
 
 export type Evidence = {
@@ -67,6 +80,7 @@ export type ToolCall = {
   input_payload: Record<string, unknown>;
   output_payload: unknown;
   latency_ms: number;
+  created_at?: string | null;
   status?: "success" | "failed";
   evidence_count?: number;
 };
@@ -77,7 +91,15 @@ export type AgentRun = {
   status: string;
   answer: QAResponse | Record<string, unknown> | null;
   latency_ms: number;
+  created_at?: string | null;
   tool_calls: ToolCall[];
+};
+
+export type DocumentReport = {
+  document_id: number;
+  document_title: string;
+  format: "markdown";
+  content: string;
 };
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
@@ -99,6 +121,7 @@ export const api = {
     request<{ document_count: number; risk_finding_count: number; recent_agent_runs: AgentRun[] }>("/api/dashboard"),
   documents: () => request<{ items: DocumentSummary[] }>("/api/documents"),
   document: (id: number) => request<DocumentDetail>(`/api/documents/${id}`),
+  documentReport: (id: number) => request<DocumentReport>(`/api/documents/${id}/report`),
   uploadDocument: (file: File) => {
     const formData = new FormData();
     formData.append("file", file);

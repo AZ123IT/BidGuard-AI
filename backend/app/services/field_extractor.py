@@ -15,17 +15,65 @@ FIELD_NAMES = [
 ]
 
 PATTERNS = {
-    "project_name": [r"project name[:\s]+([^\n.。]+)", r"project[:\s]+([^\n.。]+)"],
-    "buyer": [r"buyer[:\s]+([^\n.。]+)", r"purchaser[:\s]+([^\n.。]+)"],
-    "supplier": [r"supplier[:\s]+([^\n.。]+)", r"contractor[:\s]+([^\n.。]+)"],
-    "bid_deadline": [r"bid deadline[:\s]+([^\n.。]+)", r"submission deadline[:\s]+([^\n.。]+)"],
-    "opening_time": [r"opening time[:\s]+([^\n.。]+)", r"bid opening[:\s]+([^\n.。]+)"],
-    "contract_amount": [r"contract amount[:\s]+([^\n.。]+)", r"amount[:\s]+(\$?[0-9][^\n.。]+)"],
-    "payment_terms": [r"payment terms?[:\s]+([^\n.。]+)", r"(?:pay|payment)[^\n.。]{0,80}\b\d+\s+days\b[^\n.。]*"],
-    "delivery_date": [r"delivery date[:\s]+([^\n.。]+)", r"delivery[:\s]+([^\n.。]+)"],
-    "acceptance_criteria": [r"acceptance criteria[:\s]+([^\n.。]+)", r"acceptance[^\n.。]{0,180}"],
-    "liability_clause": [r"liability[^\n.。]{0,220}"],
-    "dispute_resolution_clause": [r"dispute resolution[:\s]+([^\n.。]+)", r"(?:arbitration|jurisdiction|mediation|court)[^\n.。]{0,180}"],
+    "project_name": [
+        r"project\s+(?:name|title)[:\s]+([^\n.。]+)",
+        r"project[:\s]+([^\n.。]+)",
+    ],
+    "buyer": [
+        r"buyer\s*[:\-]\s*([^\n.。]+)",
+        r"purchaser\s*[:\-]\s*([^\n.。]+)",
+        r"procuring entity\s*[:\-]\s*([^\n.。]+)",
+        r"client\s*[:\-]\s*([^\n.。]+)",
+        r"customer\s*[:\-]\s*([^\n.。]+)",
+        r"employer\s*[:\-]\s*([^\n.。]+)",
+    ],
+    "supplier": [
+        r"supplier\s*[:\-]\s*([^\n.。]+)",
+        r"contractor\s*[:\-]\s*([^\n.。]+)",
+        r"vendor\s*[:\-]\s*([^\n.。]+)",
+        r"service provider\s*[:\-]\s*([^\n.。]+)",
+    ],
+    "bid_deadline": [
+        r"bid deadline[:\s]+([^\n.。]+)",
+        r"submission deadline[:\s]+([^\n.。]+)",
+        r"closing (?:date|time)[:\s]+([^\n.。]+)",
+        r"tender closing[:\s]+([^\n.。]+)",
+    ],
+    "opening_time": [
+        r"opening time[:\s]+([^\n.。]+)",
+        r"bid opening[:\s]+([^\n.。]+)",
+        r"tender opening[:\s]+([^\n.。]+)",
+    ],
+    "contract_amount": [
+        r"contract amount[:\s]+([^\n.。]+)",
+        r"(?:total )?contract value[:\s]+([^\n.。]+)",
+        r"amount[:\s]+(\$?[0-9][^\n.。]+)",
+    ],
+    "payment_terms": [
+        r"payment terms?[:\s]+([^\n.。]+)",
+        r"(?:pay|payment)[^\n.。]{0,80}\b\d+\s+days\b[^\n.。]*",
+        r"\bnet\s+\d+\s+days\b[^\n.。]*",
+    ],
+    "delivery_date": [
+        r"delivery date[:\s]+([^\n.。]+)",
+        r"completion date[:\s]+([^\n.。]+)",
+        r"delivery[:\s]+([^\n.。]+)",
+    ],
+    "acceptance_criteria": [
+        r"acceptance criteria[:\s]+([^\n.。]+)",
+        r"acceptance[:\s]+([^\n.。]+)",
+        r"acceptance[^\n.。]{0,180}",
+    ],
+    "liability_clause": [
+        r"liability clause[:\s]+([^\n.。]+)",
+        r"liability cap[:\s]+([^\n.。]+)",
+        r"liability[^\n.。]{0,220}",
+    ],
+    "dispute_resolution_clause": [
+        r"dispute resolution[:\s]+([^\n.。]+)",
+        r"governing law and dispute forum[:\s]+([^\n.。]+)",
+        r"(?:arbitration|jurisdiction|mediation|court)[^\n.。]{0,180}",
+    ],
 }
 
 

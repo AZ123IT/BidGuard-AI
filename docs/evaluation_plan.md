@@ -1,6 +1,6 @@
 # Evaluation Plan
 
-Phase 2.1 ships a small deterministic runner:
+BidGuard AI includes a small deterministic eval runner:
 
 ```bash
 cd backend
@@ -15,7 +15,7 @@ python3 scripts/verify_all.py
 
 It runs backend tests, Ruff, provider smoke, smoke eval, demo eval, frontend typecheck, and frontend build. Add `--with-pgvector` when Docker is available and you want PostgreSQL pgvector smoke verification in the same command.
 
-The runner loads `data/eval_cases/rag_smoke.json` by default. Phase 2.3 adds a richer demo dataset:
+The runner loads `data/eval_cases/rag_smoke.json` by default. The richer demo dataset is:
 
 ```bash
 cd backend

@@ -8,11 +8,11 @@ It helps a user upload tender or contract documents, retrieve page-level evidenc
 
 ## 30-Second Explanation
 
-BidGuard AI is an evidence-first RAG app for reviewing tender and contract documents. It parses uploaded PDFs, stores page-aware chunks, answers questions with citations, refuses unsupported questions, runs deterministic procurement risk checks, compares draft changes, and logs agent tool calls. The project demonstrates full-stack AI engineering rather than legal advice: FastAPI, Next.js, SQLAlchemy, SQLite fallback, PostgreSQL pgvector, provider abstractions, guarded LLM synthesis, and evaluation coverage.
+BidGuard AI is an evidence-first RAG app for reviewing tender and contract documents. It parses uploaded PDF, DOCX, and TXT files, stores evidence chunks, answers questions with citations, refuses unsupported questions, runs deterministic procurement risk checks, compares draft changes, exports Markdown review reports, and logs agent tool calls. The project demonstrates full-stack AI engineering rather than legal advice: FastAPI, Next.js, SQLAlchemy, SQLite fallback, PostgreSQL pgvector, provider abstractions, guarded LLM synthesis, and evaluation coverage.
 
 ## 2-Minute Technical Explanation
 
-The system starts with document ingestion. A PDF is parsed with PyMuPDF, chunked with page metadata, embedded through either a local deterministic provider or an OpenAI-compatible provider, and stored in the database. SQLite is the default path and stores JSON embeddings for easy local demos. PostgreSQL adds a pgvector column for a more realistic vector retrieval path.
+The system starts with document ingestion. PDFs are parsed with PyMuPDF, DOCX files are parsed from Word document XML, TXT files are decoded as UTF-8, and all supported inputs are chunked with source metadata. Chunks are embedded through either a local deterministic provider or an OpenAI-compatible provider and stored in the database. SQLite is the default path and stores JSON embeddings for easy local demos. PostgreSQL adds a pgvector column for a more realistic vector retrieval path.
 
 At query time, BidGuard AI retrieves relevant chunks and applies an evidence sufficiency gate. If evidence is weak or empty, it returns the fixed insufficient-evidence sentence and does not call the LLM. If evidence is sufficient, guarded synthesis answers only from the retrieved snippets and preserves citations. The agent layer stays intentionally lightweight: it routes to evidence search, risk rule checking, cross-document diff, or report generation, then stores traceable tool calls.
 
@@ -27,6 +27,7 @@ BidGuard AI is built around the opposite constraint: every answer should be grou
 ## Why It Is Not Just a PDF Chatbot
 
 - It stores page-aware chunks and returns document title, page number, score, retrieval method, and snippets with answers.
+- It links evidence cards back to the source chunk on the document detail page for a clearer demo trail.
 - It has a guarded synthesis path that skips LLM generation when evidence is weak or missing.
 - It includes deterministic risk tools for common procurement review issues.
 - It compares extracted fields and clauses across two documents.
@@ -86,6 +87,9 @@ The backend skips LLM synthesis in that case. This is the trust boundary: model 
 - Real mode: `EMBEDDING_PROVIDER=openai_compatible`, `LLM_PROVIDER=openai_compatible`. This is optional and validated through `backend/scripts/smoke_providers.py`.
 - Missing real-provider keys are reported as `skipped`, not as test failures.
 - Embedding dimension mismatches fail clearly before a misleading pgvector demo.
+- `scripts/real_provider_demo.py` runs provider smoke first, then runs the 18-case demo eval and writes an ignored JSON report only when both real providers pass.
+
+Current real-provider demo status: skipped in this local session because no real embedding or LLM API keys are configured. See `docs/real_provider_demo.md` for the exact repeatable command.
 
 ## Storage Paths
 
@@ -102,6 +106,19 @@ The agent is intentionally lightweight:
 - Compare requests call `cross_doc_diff_tool`.
 - Report-style requests can use the report generator.
 - Every run stores tool calls, status, latency, and output summaries for trace inspection.
+
+## Demo Script
+
+1. Start the backend and frontend in local mode.
+2. Upload `data/sample_docs/sample_tender.pdf`.
+3. Ask `What is the bid deadline for the solar microgrid project?`.
+4. Show the final answer, cited page, chunk id, score, retrieval method, and synthesis status.
+5. Open the source chunk from the evidence card and explain that this is chunk-level evidence navigation, not PDF highlighting.
+6. Ask `What is the vendor tax ID?` and show the exact insufficient-evidence fallback.
+7. Run the demo eval to seed synthetic tender/contract documents.
+8. Run risk review on `demo_risky_terms`.
+9. Compare `demo_contract_draft` and `demo_contract_revised`.
+10. Run an agent objective and show ordered tool calls in Agent Trace.
 
 ## Evaluation Design
 
@@ -128,6 +145,7 @@ SQLite mode is intentionally retained because it makes the project easy to run o
 | Feature | Status | Notes |
 | --- | --- | --- |
 | PDF upload | Implemented | FastAPI upload endpoint and frontend document page. |
+| DOCX/TXT upload | Implemented | DOCX text extraction is lightweight; DOCX page references are document-level. |
 | TXT/demo document seeding | Implemented | Used by eval runner for repeatable demo data. |
 | Document parsing | Implemented | PyMuPDF for PDFs; seeded text path for eval/demo. |
 | Page-aware chunking | Implemented | Chunks preserve document id and page number. |
@@ -140,10 +158,12 @@ SQLite mode is intentionally retained because it makes the project easy to run o
 | Risk review | Implemented | Rule-based procurement checks. |
 | Cross-document diff | Implemented | Regex field extraction plus structured diff rows. |
 | Agent trace | Implemented | Tool calls and runs are logged. |
+| Evidence chunk navigation | Implemented | Q&A cards link to document detail chunks. |
+| Markdown review export | Implemented | Document detail exports extracted fields, risk findings, and chunk index. |
 | Evaluation runner | Implemented | Smoke and demo eval datasets. |
 | Provider smoke | Implemented | Local pass, real-provider skip/pass, dimension check. |
 | OCR | Future | Intentionally not part of the current phase. |
-| PDF evidence highlighting | Future | Evidence snippets exist; visual highlight anchors are future work. |
+| PDF evidence highlighting | Future | Chunk links exist; pixel-perfect PDF highlights are future work. |
 | Complex SaaS features | Out of scope | No payments, tenants, approvals, or complex roles. |
 
 ## Resume Bullets
@@ -160,8 +180,9 @@ SQLite mode is intentionally retained because it makes the project easy to run o
 - SQLite retrieval is a local fallback, not production vector search.
 - Field extraction is regex-based and intentionally simple.
 - Risk rules are deterministic checks, not legal analysis.
-- OCR and PDF visual highlighting are not implemented yet.
+- OCR and pixel-perfect PDF visual highlighting are not implemented yet.
 - Real provider validation requires user-supplied API credentials in environment variables.
+- DOCX parsing extracts text but does not preserve Word layout, comments, tracked changes, or page numbers.
 
 ## Possible Interview Q&A
 
@@ -176,6 +197,9 @@ SQLite keeps the demo zero-config and test-friendly. PostgreSQL + pgvector remai
 
 **What does the agent actually do?**
 It is a lightweight router over real tools: evidence search, risk rule check, cross-document diff, and report generation. It is not an overbuilt multi-agent system.
+
+**Is there PDF highlighting?**
+Not yet. The current UI links evidence cards to page-aware chunks in document detail, which is enough to demonstrate traceability without adding a heavy PDF highlighter.
 
 **What would you improve next?**
 I would validate a real provider, add public tender PDFs, add CI pgvector tests, improve field extraction with layout/table parsing, and add PDF evidence highlighting later.
