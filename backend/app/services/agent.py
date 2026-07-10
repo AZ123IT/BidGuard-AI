@@ -76,6 +76,7 @@ def run_agent(
             lambda: evidence_search_tool(session, settings, objective, document_ids),
         )
         if is_evidence_sufficient(
+            objective,
             tool_outputs["evidence_search_tool"],
             min_score=settings.min_retrieval_score,
         ):

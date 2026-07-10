@@ -1,3 +1,4 @@
+import argparse
 import json
 import sys
 from pathlib import Path
@@ -58,19 +59,11 @@ def llm_validation_status(settings: Settings) -> dict[str, Any]:
 
 def run_smoke() -> dict[str, Any]:
     settings = Settings()
-    if not database_url_is_postgres(settings.database_url):
-        raise SmokeFailure("DATABASE_URL must point to PostgreSQL for pgvector smoke verification.")
+    app, column_type = prepare_pgvector_app(settings)
 
     from fastapi.testclient import TestClient
 
-    app = create_app(settings)
     client = TestClient(app)
-    _assert(app.state.engine.dialect.name == "postgresql", "SQLAlchemy dialect is not PostgreSQL.")
-    _assert(_has_pgvector(app), "pgvector extension is not installed.")
-
-    column_type = _pgvector_column_type(app)
-    expected_type = f"vector({settings.embedding_dimension})"
-    _assert(column_type == expected_type, f"embedding_vector type is {column_type}, expected {expected_type}.")
 
     embedding_validation = _run_embedding_validation(settings)
     upload_payload = _upload_sample_pdf(client)
@@ -125,9 +118,49 @@ def run_smoke() -> dict[str, Any]:
     }
 
 
-def main() -> int:
+def prepare_pgvector_app(settings: Settings) -> tuple[Any, str]:
+    if not database_url_is_postgres(settings.database_url):
+        raise SmokeFailure("DATABASE_URL must point to PostgreSQL for pgvector smoke verification.")
+
+    app = create_app(settings)
     try:
-        result = run_smoke()
+        _assert(app.state.engine.dialect.name == "postgresql", "SQLAlchemy dialect is not PostgreSQL.")
+        _assert(_has_pgvector(app), "pgvector extension is not installed.")
+
+        column_type = _pgvector_column_type(app)
+        expected_type = f"vector({settings.embedding_dimension})"
+        _assert(
+            column_type == expected_type,
+            f"embedding_vector type is {column_type}, expected {expected_type}.",
+        )
+        return app, column_type
+    except Exception:
+        app.state.engine.dispose()
+        raise
+
+
+def run_preflight() -> dict[str, Any]:
+    settings = Settings()
+    app, column_type = prepare_pgvector_app(settings)
+    app.state.engine.dispose()
+    return {
+        "status": "PASS",
+        "database_mode": "postgres_pgvector",
+        "pgvector_extension": "available",
+        "embedding_vector_type": column_type,
+    }
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description="Verify BidGuard AI PostgreSQL + pgvector mode.")
+    parser.add_argument(
+        "--preflight-only",
+        action="store_true",
+        help="Check PostgreSQL, pgvector, and vector dimensions without calling AI providers.",
+    )
+    args = parser.parse_args(argv)
+    try:
+        result = run_preflight() if args.preflight_only else run_smoke()
     except Exception as exc:
         print(json.dumps({"status": "FAIL", "error": str(exc)}, indent=2))
         return 1
@@ -140,30 +173,41 @@ def _run_embedding_validation(settings: Settings) -> dict[str, Any]:
     if status["status"] != "configured":
         return status
     try:
-        embedding = make_embedding_provider(settings).embed_texts(["BidGuard AI pgvector smoke"])[0]
+        provider = make_embedding_provider(settings)
+        embedding = provider.embed_texts(["BidGuard AI pgvector smoke"])[0]
     except EmbeddingError as exc:
         raise SmokeFailure(str(exc)) from exc
     _assert(
         len(embedding) == settings.embedding_dimension,
         f"Embedding provider returned dimension {len(embedding)}, expected {settings.embedding_dimension}.",
     )
-    return status | {"status": "passed", "dimension": len(embedding)}
+    return status | {
+        "status": "passed",
+        "model": provider.model,
+        "dimension": len(embedding),
+        "usage": dict(provider.last_call),
+    }
 
 
 def _run_llm_validation(settings: Settings, evidence: list[dict]) -> dict[str, Any]:
     status = llm_validation_status(settings)
     if status["status"] != "configured":
         return status
+    provider = make_llm_provider(settings)
     response = guarded_synthesize_answer(
         question=ANSWERABLE_QUESTION,
         evidence=evidence,
-        provider=make_llm_provider(settings),
+        provider=provider,
         min_score=settings.min_retrieval_score,
     )
     _assert(response["llm_synthesis_used"] is True, "Configured LLM provider was not used.")
     _assert(response["evidence"] == evidence, "Guarded synthesis did not preserve evidence.")
     _assert(response["answer"] != INSUFFICIENT_EVIDENCE_MESSAGE, "Configured LLM refused sufficient evidence.")
-    return status | {"status": "passed", "model": settings.llm_model}
+    return status | {
+        "status": "passed",
+        "model": provider.model,
+        "usage": response["provider_usage"],
+    }
 
 
 def _upload_sample_pdf(client: Any) -> dict[str, Any]:

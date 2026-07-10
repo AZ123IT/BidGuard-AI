@@ -21,12 +21,18 @@ class Settings(BaseSettings):
     embedding_base_url: str = "https://api.openai.com/v1"
     embedding_model: str = "local-hash-v1"
     embedding_dimension: int = Field(default=64, ge=8, le=4096)
+    embedding_timeout_seconds: float = Field(default=30.0, gt=0.0, le=300.0)
+    embedding_input_cost_per_million_tokens: float = Field(default=0.0, ge=0.0)
 
     llm_provider: str = "local_fake"
     llm_api_key: str | None = None
     llm_base_url: str = "https://api.openai.com/v1"
     llm_model: str = "gpt-4.1-mini"
     llm_temperature: float = Field(default=0.0, ge=0.0, le=2.0)
+    llm_timeout_seconds: float = Field(default=30.0, gt=0.0, le=300.0)
+    llm_input_cost_per_million_tokens: float = Field(default=0.0, ge=0.0)
+    llm_cached_input_cost_per_million_tokens: float | None = Field(default=None, ge=0.0)
+    llm_output_cost_per_million_tokens: float = Field(default=0.0, ge=0.0)
 
     retrieval_limit: int = Field(default=5, ge=1, le=20)
     min_retrieval_score: float = Field(default=0.05, ge=0.0, le=1.0)

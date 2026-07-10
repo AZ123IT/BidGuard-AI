@@ -40,14 +40,16 @@ def run_smoke(settings: Settings | None = None) -> dict[str, Any]:
 def validate_embedding_provider(settings: Settings) -> dict[str, Any]:
     provider = settings.embedding_provider.lower()
     if provider in LOCAL_EMBEDDING_ALIASES:
-        embedding = make_embedding_provider(settings).embed_texts([SMOKE_TEXT])[0]
+        embedding_provider = make_embedding_provider(settings)
+        embedding = embedding_provider.embed_texts([SMOKE_TEXT])[0]
         _assert_dimension(embedding, settings.embedding_dimension)
         return {
             "status": "passed",
             "mode": "local",
             "provider": settings.embedding_provider,
-            "model": settings.embedding_model,
+            "model": embedding_provider.model,
             "dimension": len(embedding),
+            "usage": dict(embedding_provider.last_call),
         }
 
     if provider in OPENAI_COMPATIBLE_ALIASES:
@@ -61,7 +63,8 @@ def validate_embedding_provider(settings: Settings) -> dict[str, Any]:
                 "missing": missing,
             }
         try:
-            embedding = make_embedding_provider(settings).embed_texts([SMOKE_TEXT])[0]
+            embedding_provider = make_embedding_provider(settings)
+            embedding = embedding_provider.embed_texts([SMOKE_TEXT])[0]
         except EmbeddingError as exc:
             raise SmokeFailure(f"Embedding provider validation failed: {exc}") from exc
         _assert_dimension(embedding, settings.embedding_dimension)
@@ -69,8 +72,9 @@ def validate_embedding_provider(settings: Settings) -> dict[str, Any]:
             "status": "passed",
             "mode": "openai_compatible",
             "provider": settings.embedding_provider,
-            "model": settings.embedding_model,
+            "model": embedding_provider.model,
             "dimension": len(embedding),
+            "usage": dict(embedding_provider.last_call),
         }
 
     raise SmokeFailure(f"Unsupported EMBEDDING_PROVIDER: {settings.embedding_provider}")
@@ -79,10 +83,11 @@ def validate_embedding_provider(settings: Settings) -> dict[str, Any]:
 def validate_llm_provider(settings: Settings) -> dict[str, Any]:
     provider = settings.llm_provider.lower()
     if provider in LOCAL_LLM_ALIASES:
+        llm_provider = make_llm_provider(settings)
         response = guarded_synthesize_answer(
             question=SMOKE_QUESTION,
             evidence=SMOKE_EVIDENCE,
-            provider=make_llm_provider(settings),
+            provider=llm_provider,
             min_score=settings.min_retrieval_score,
         )
         _assert_valid_synthesis(response, expected_provider_mode="local")
@@ -90,8 +95,9 @@ def validate_llm_provider(settings: Settings) -> dict[str, Any]:
             "status": "passed",
             "mode": "local",
             "provider": settings.llm_provider,
-            "model": settings.llm_model,
+            "model": llm_provider.model,
             "llm_synthesis_used": response["llm_synthesis_used"],
+            "usage": response["provider_usage"],
         }
 
     if provider in OPENAI_COMPATIBLE_ALIASES:
@@ -105,10 +111,11 @@ def validate_llm_provider(settings: Settings) -> dict[str, Any]:
                 "missing": missing,
             }
         try:
+            llm_provider = make_llm_provider(settings)
             response = guarded_synthesize_answer(
                 question=SMOKE_QUESTION,
                 evidence=SMOKE_EVIDENCE,
-                provider=make_llm_provider(settings),
+                provider=llm_provider,
                 min_score=settings.min_retrieval_score,
                 raise_on_provider_error=True,
             )
@@ -119,8 +126,9 @@ def validate_llm_provider(settings: Settings) -> dict[str, Any]:
             "status": "passed",
             "mode": "openai_compatible",
             "provider": settings.llm_provider,
-            "model": settings.llm_model,
+            "model": llm_provider.model,
             "llm_synthesis_used": response["llm_synthesis_used"],
+            "usage": response["provider_usage"],
         }
 
     raise SmokeFailure(f"Unsupported LLM_PROVIDER: {settings.llm_provider}")

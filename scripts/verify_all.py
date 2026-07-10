@@ -1,15 +1,18 @@
 #!/usr/bin/env python3
 import argparse
 import os
+import shutil
 import subprocess
 import sys
+import tempfile
 from dataclasses import dataclass, field
 from pathlib import Path
-
 
 ROOT = Path(__file__).resolve().parents[1]
 BACKEND = ROOT / "backend"
 FRONTEND = ROOT / "frontend"
+VERIFY_DB_PATH = Path(tempfile.gettempdir()) / f"bidguard_ai_verify_{os.getpid()}.sqlite3"
+VERIFY_UPLOAD_DIR = Path(tempfile.gettempdir()) / f"bidguard_ai_verify_uploads_{os.getpid()}"
 
 
 @dataclass(frozen=True)
@@ -23,15 +26,49 @@ class Step:
 def build_plan(with_pgvector: bool = False) -> list[Step]:
     backend_python = str(BACKEND / ".venv" / "bin" / "python")
     backend_ruff = str(BACKEND / ".venv" / "bin" / "ruff")
+    local_backend_env = {
+        "DATABASE_URL": f"sqlite:///{VERIFY_DB_PATH}",
+        "UPLOAD_DIR": str(VERIFY_UPLOAD_DIR),
+        "EMBEDDING_PROVIDER": "local",
+        "EMBEDDING_MODEL": "local-hash-v1",
+        "EMBEDDING_DIMENSION": "64",
+        "EMBEDDING_API_KEY": "",
+        "LLM_PROVIDER": "local_fake",
+        "LLM_MODEL": "local-fake-v1",
+        "LLM_API_KEY": "",
+        "OPENAI_API_KEY": "",
+    }
     plan = [
-        Step("backend tests", [backend_python, "-m", "pytest", "tests", "-q"], BACKEND),
+        Step(
+            "backend tests",
+            [backend_python, "-m", "pytest", "tests", "-q"],
+            BACKEND,
+            env=local_backend_env,
+        ),
         Step("backend Ruff", [backend_ruff, "check", "."], BACKEND),
-        Step("provider smoke", [backend_python, "scripts/smoke_providers.py"], BACKEND),
-        Step("smoke eval", [backend_python, "-m", "app.evaluation.run_eval"], BACKEND),
+        Step(
+            "provider smoke",
+            [backend_python, "scripts/smoke_providers.py"],
+            BACKEND,
+            env=local_backend_env,
+        ),
+        Step(
+            "smoke eval",
+            [backend_python, "-m", "app.evaluation.run_eval"],
+            BACKEND,
+            env=local_backend_env,
+        ),
         Step(
             "demo eval",
             [backend_python, "-m", "app.evaluation.run_eval", "--dataset", "../data/eval_cases/rag_demo.json"],
             BACKEND,
+            env=local_backend_env,
+        ),
+        Step(
+            "retrieval benchmark",
+            [backend_python, "scripts/run_retrieval_benchmark.py"],
+            BACKEND,
+            env=local_backend_env,
         ),
         Step("frontend typecheck", ["npm", "run", "typecheck"], FRONTEND),
         Step("frontend build", ["npm", "run", "build"], FRONTEND),
@@ -61,14 +98,17 @@ def build_plan(with_pgvector: bool = False) -> list[Step]:
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
     results = []
-    for step in build_plan(with_pgvector=args.with_pgvector):
-        result = run_step(step)
-        results.append(result)
-        if result != 0:
-            print_summary(results)
-            return result
-    print_summary(results)
-    return 0
+    try:
+        for step in build_plan(with_pgvector=args.with_pgvector):
+            result = run_step(step)
+            results.append(result)
+            if result != 0:
+                print_summary(results)
+                return result
+        print_summary(results)
+        return 0
+    finally:
+        cleanup_local_verification_artifacts()
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
@@ -97,6 +137,12 @@ def print_summary(results: list[int]) -> None:
     total = len(results)
     failed = total - passed
     print(f"\nVerification summary: {passed}/{total} passed, {failed} failed.")
+
+
+def cleanup_local_verification_artifacts() -> None:
+    for suffix in ("", "-journal", "-shm", "-wal"):
+        Path(f"{VERIFY_DB_PATH}{suffix}").unlink(missing_ok=True)
+    shutil.rmtree(VERIFY_UPLOAD_DIR, ignore_errors=True)
 
 
 if __name__ == "__main__":

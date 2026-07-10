@@ -70,9 +70,17 @@
 
 ## Phase 3.5 Real Provider Demo Status
 
-- Added `scripts/real_provider_demo.py` to run provider smoke and then the 18-case demo eval when real OpenAI-compatible embedding and LLM providers are configured.
+- Added `scripts/real_provider_demo.py` to require real OpenAI-compatible providers, PostgreSQL pgvector, the 36-case demo eval, and the 16-case retrieval challenge without silent fallback.
 - Added `docs/real_provider_demo.md` with the current session result and repeatable commands.
-- Current local status is skipped because no real provider API keys are configured.
+- Verified local Ollama `embeddinggemma`, DeepSeek `deepseek-v4-flash`, PostgreSQL pgvector, cache-aware cost accounting, and a 36/36 real-provider workflow eval.
+
+## Evaluation Hardening
+
+- Expanded the workflow eval from 18 to 36 cases, including hard negatives and prompt-injection documents.
+- Added a 16-case retrieval challenge comparing keyword, local deterministic, configured real embedding, and PostgreSQL pgvector modes.
+- Added Recall@1/3/5, MRR, nDCG@5, evidence-page hit, answer correctness, latency, token, and estimated-cost reporting.
+- Added ingestion/query usage accounting and a written failure analysis.
+- Measured real retrieval before reranking: 64-dimensional pgvector improved Recall@5 from `0.5625` to `0.6875`; five hard cases remain.
 
 ## Phase 4 Product Polish Included
 
@@ -80,14 +88,13 @@
 - Markdown review report export from document detail.
 - Better regex field extraction for common procurement synonyms such as `Project Title`, `Procuring Entity`, `Vendor`, `Closing date`, `Total contract value`, and `Net 45 days`.
 
-## Next Phase
+## Highest-Value Remaining Work
 
-- Add more realistic public-document eval cases.
+- Add public, non-confidential Chinese tender examples with human-reviewed labels.
+- Test model-specific query/document encoding and then an optional reranker against the recorded failures.
 - Add pgvector integration tests in a PostgreSQL CI service.
 - Add layout-aware table extraction.
-- Add PDF page preview with evidence highlight anchors.
 - Improve field extraction with layout-aware parsing, Word layout parsing, tracked-change handling, and table extraction.
-- Add OCR as an isolated optional worker for scanned PDFs.
 
 ## Explicit No-Go Items
 

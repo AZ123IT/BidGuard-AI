@@ -75,9 +75,9 @@ The backend stores page numbers and chunk indexes with every chunk. DOCX parsing
 
 SQLite stores embeddings in the portable `document_chunks.embedding` JSON field and uses deterministic local embeddings by default. PostgreSQL enables pgvector with an `embedding_vector` column and `ivfflat` vector index. When the vector column is populated, evidence items report `retrieval_method: "pgvector"`; otherwise retrieval falls back to the SQLite-compatible hybrid path.
 
-The vector column dimension must match `EMBEDDING_DIMENSION`. Local verification uses `64`; common hosted models such as `text-embedding-3-small` use `1536`. Set the dimension before running PostgreSQL migrations or before starting the app against a fresh database.
+The vector column dimension must match `EMBEDDING_DIMENSION`. The verified Ollama experiment uses `64`; an isolated native-`768` experiment was also measured and did not improve this challenge set. OpenAI-compatible embedding requests include the configured `dimensions` value, and every dimension change requires a matching fresh or migrated PostgreSQL vector column.
 
-LLM synthesis is optional. `LLM_PROVIDER=local_fake` keeps tests deterministic. OpenAI-compatible providers are only called when configured and only after retrieved evidence passes the backend sufficiency gate. If evidence is weak or empty, the backend returns the fixed insufficient-evidence sentence without calling the LLM.
+LLM synthesis is optional. `LLM_PROVIDER=local_fake` keeps tests deterministic. OpenAI-compatible providers are only called when configured and only after retrieved evidence passes the backend sufficiency gate. Identifier questions additionally require a labelled identifier value; semantic similarity to a supplier name is not sufficient. If evidence is weak or empty, the backend returns the fixed insufficient-evidence sentence without calling the LLM.
 
 ## Provider Modes
 
@@ -85,4 +85,4 @@ Local mode uses `EMBEDDING_PROVIDER=local` and `LLM_PROVIDER=local_fake`. It is 
 
 Real-provider mode uses `EMBEDDING_PROVIDER=openai_compatible` and/or `LLM_PROVIDER=openai_compatible`. Real providers are validated by `backend/scripts/smoke_providers.py`; missing keys are reported as skipped instead of failing normal tests. Embedding dimension mismatches fail clearly because PostgreSQL pgvector columns must match the configured provider dimension.
 
-The most realistic RAG demo is PostgreSQL + pgvector with a real embedding provider, followed by the demo eval. The evidence-first guard remains the same in every mode.
+The most realistic RAG demo is PostgreSQL + pgvector with a real embedding provider, followed by the demo eval and retrieval challenge. Real semantic retrieval can satisfy the evidence gate at a high similarity threshold even without keyword overlap; deterministic local hash retrieval cannot use that semantic-only path. Prompt-injection chunks remain excluded in every mode.

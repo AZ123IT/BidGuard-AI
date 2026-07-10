@@ -1,7 +1,8 @@
 import hashlib
 import math
-from dataclasses import dataclass
-from typing import Protocol
+from dataclasses import dataclass, field
+from time import perf_counter
+from typing import Any, Protocol
 
 import httpx
 
@@ -17,22 +18,35 @@ class EmbeddingProvider(Protocol):
     provider_name: str
     model: str
     dimension: int
+    last_call: dict[str, Any]
 
     def embed_texts(self, texts: list[str]) -> list[list[float]]:
         pass
 
 
-@dataclass(frozen=True)
+@dataclass
 class LocalEmbeddingProvider:
     dimension: int
     model: str = "local-hash-v1"
     provider_name: str = "local"
+    last_call: dict[str, Any] = field(default_factory=dict, init=False)
 
     def embed_texts(self, texts: list[str]) -> list[list[float]]:
-        return [_normalize(_hash_tokens(text, self.dimension)) for text in texts]
+        started = perf_counter()
+        embeddings = [_normalize(_hash_tokens(text, self.dimension)) for text in texts]
+        input_tokens = sum(len(tokenize(text)) for text in texts)
+        self.last_call = _embedding_call_metrics(
+            provider=self.provider_name,
+            model=self.model,
+            input_tokens=input_tokens,
+            latency_ms=(perf_counter() - started) * 1000,
+            estimated_cost_usd=0.0,
+            input_cost_per_million_tokens=0.0,
+        )
+        return embeddings
 
 
-@dataclass(frozen=True)
+@dataclass
 class OpenAICompatibleEmbeddingProvider:
     api_key: str
     base_url: str
@@ -40,15 +54,23 @@ class OpenAICompatibleEmbeddingProvider:
     dimension: int
     provider_name: str = "openai_compatible"
     timeout_seconds: float = 30.0
+    input_cost_per_million_tokens: float = 0.0
+    last_call: dict[str, Any] = field(default_factory=dict, init=False)
 
     def embed_texts(self, texts: list[str]) -> list[list[float]]:
         if not texts:
             return []
+        started = perf_counter()
         try:
             response = httpx.post(
                 f"{self.base_url.rstrip('/')}/embeddings",
                 headers={"Authorization": f"Bearer {self.api_key}"},
-                json={"model": self.model, "input": texts},
+                json={
+                    "model": self.model,
+                    "input": texts,
+                    "encoding_format": "float",
+                    "dimensions": self.dimension,
+                },
                 timeout=self.timeout_seconds,
             )
             response.raise_for_status()
@@ -79,16 +101,26 @@ class OpenAICompatibleEmbeddingProvider:
                 raise EmbeddingError(
                     f"Embedding dimension mismatch: expected {self.dimension}, got {len(embedding)}."
                 )
+        usage = payload.get("usage") if isinstance(payload, dict) else {}
+        usage = usage if isinstance(usage, dict) else {}
+        input_tokens = _usage_int(usage, "prompt_tokens", "input_tokens")
+        total_tokens = _usage_int(usage, "total_tokens") or input_tokens
+        self.last_call = _embedding_call_metrics(
+            provider=self.provider_name,
+            model=str(payload.get("model") or self.model),
+            input_tokens=input_tokens,
+            total_tokens=total_tokens,
+            latency_ms=(perf_counter() - started) * 1000,
+            estimated_cost_usd=(input_tokens / 1_000_000) * self.input_cost_per_million_tokens,
+            input_cost_per_million_tokens=self.input_cost_per_million_tokens,
+        )
         return embeddings
 
 
 def make_embedding_provider(settings: Settings) -> EmbeddingProvider:
     provider = settings.embedding_provider.lower()
     if provider in {"local", "fake", "deterministic"}:
-        return LocalEmbeddingProvider(
-            dimension=settings.embedding_dimension,
-            model=settings.embedding_model,
-        )
+        return LocalEmbeddingProvider(dimension=settings.embedding_dimension)
     if provider in {"openai", "openai_compatible", "qwen", "bge"}:
         api_key = settings.embedding_api_key or settings.openai_api_key
         base_url = settings.embedding_base_url or settings.openai_base_url
@@ -113,6 +145,8 @@ def make_embedding_provider(settings: Settings) -> EmbeddingProvider:
             base_url=base_url,
             model=settings.embedding_model,
             dimension=settings.embedding_dimension,
+            timeout_seconds=settings.embedding_timeout_seconds,
+            input_cost_per_million_tokens=settings.embedding_input_cost_per_million_tokens,
         )
     raise EmbeddingError(f"Unsupported EMBEDDING_PROVIDER: {settings.embedding_provider}")
 
@@ -143,3 +177,32 @@ def _normalize(vector: list[float]) -> list[float]:
     if norm == 0:
         return vector
     return [round(value / norm, 6) for value in vector]
+
+
+def _embedding_call_metrics(
+    provider: str,
+    model: str,
+    input_tokens: int,
+    latency_ms: float,
+    estimated_cost_usd: float,
+    input_cost_per_million_tokens: float,
+    total_tokens: int | None = None,
+) -> dict[str, Any]:
+    return {
+        "provider": provider,
+        "model": model,
+        "latency_ms": round(latency_ms, 3),
+        "input_tokens": int(input_tokens),
+        "output_tokens": 0,
+        "total_tokens": int(total_tokens if total_tokens is not None else input_tokens),
+        "estimated_cost_usd": round(estimated_cost_usd, 8),
+        "input_cost_per_million_tokens": input_cost_per_million_tokens,
+    }
+
+
+def _usage_int(usage: dict[str, Any], *keys: str) -> int:
+    for key in keys:
+        value = usage.get(key)
+        if isinstance(value, int):
+            return value
+    return 0

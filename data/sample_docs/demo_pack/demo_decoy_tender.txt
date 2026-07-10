@@ -1,0 +1,17 @@
+=== Page 1 ===
+Document type: Tender invitation.
+Project name: Riverside Wind Farm Control Upgrade.
+Buyer: North Valley Energy Authority.
+Supplier: To be selected after evaluation.
+Bid deadline: 18 August 2026 at 17:00.
+Opening time: 18 August 2026 at 17:30.
+Contract amount: AUD 1,180,000 estimated budget.
+Payment terms: The purchaser shall pay the supplier within 45 days after receiving a valid invoice.
+Delivery date: 10 December 2026.
+
+=== Page 2 ===
+Acceptance criteria: The control system must pass factory testing and a five day operational trial.
+Liability clause: Supplier and purchaser liabilities are each capped at the contract amount.
+Dispute resolution: Mediation in Melbourne followed by arbitration under ACICA rules.
+Termination condition: Either party may terminate for material breach after 21 days written notice.
+Evaluation criteria: Price 35%, technical compliance 40%, delivery plan 15%, local support 10%.

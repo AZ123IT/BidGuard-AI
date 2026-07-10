@@ -16,7 +16,7 @@ The system starts with document ingestion. PDFs are parsed with PyMuPDF, DOCX fi
 
 At query time, BidGuard AI retrieves relevant chunks and applies an evidence sufficiency gate. If evidence is weak or empty, it returns the fixed insufficient-evidence sentence and does not call the LLM. If evidence is sufficient, guarded synthesis answers only from the retrieved snippets and preserves citations. The agent layer stays intentionally lightweight: it routes to evidence search, risk rule checking, cross-document diff, or report generation, then stores traceable tool calls.
 
-The project also includes an evaluation story. There is a smoke eval, an 18-case synthetic demo eval, provider smoke validation, pgvector smoke validation, and a root verification command. Metrics cover retrieval hit, evidence page hit, insufficient-evidence correctness, answer keywords, risk categories, diff fields, tool-call correctness, provider mode, database mode, and retrieval method.
+The project also includes an evaluation story. There is a smoke eval, a 36-case workflow regression set, a separate 16-case retrieval challenge, provider smoke validation, pgvector smoke validation, and a root verification command. Metrics cover Recall@k, MRR, nDCG, evidence page hit, answer/refusal correctness, risk categories, diff fields, tool routing, provider/model/dimension, latency, tokens, and estimated cost.
 
 ## Problem
 
@@ -87,9 +87,9 @@ The backend skips LLM synthesis in that case. This is the trust boundary: model 
 - Real mode: `EMBEDDING_PROVIDER=openai_compatible`, `LLM_PROVIDER=openai_compatible`. This is optional and validated through `backend/scripts/smoke_providers.py`.
 - Missing real-provider keys are reported as `skipped`, not as test failures.
 - Embedding dimension mismatches fail clearly before a misleading pgvector demo.
-- `scripts/real_provider_demo.py` runs provider smoke first, then runs the 18-case demo eval and writes an ignored JSON report only when both real providers pass.
+- `scripts/real_provider_demo.py` requires real providers plus PostgreSQL pgvector, runs the 36-case demo eval and 16-case retrieval challenge, rejects silent fallbacks, and writes ignored experiment reports.
 
-Current real-provider demo status: skipped in this local session because no real embedding or LLM API keys are configured. See `docs/real_provider_demo.md` for the exact repeatable command.
+Current real-provider demo status: verified with local Ollama `embeddinggemma`, DeepSeek `deepseek-v4-flash`, PostgreSQL pgvector, and recorded latency/token/cost metrics. See `docs/real_provider_demo.md`.
 
 ## Storage Paths
 
@@ -132,6 +132,12 @@ The eval runner covers:
 
 Current metrics include retrieval hit, evidence page hit, answer keyword hit, insufficient-evidence correctness, risk category/keyword hit, diff field/keyword hit, tool-call correctness, average score, provider mode, database mode, and observed retrieval methods.
 
+The retrieval challenge adds Recall@1/3/5, MRR, nDCG@5, extractive answer correctness, latency, tokens, and estimated cost. Keyword and deterministic baselines score Recall@5 `0.5625` and MRR `0.5208`. Ollama semantic embeddings + pgvector at 64 dimensions improve them to `0.6875` and `0.6250`. A native 768-dimensional experiment scored lower at Recall@5 `0.6250`, showing that larger vectors are not automatically better for this corpus.
+
+## Evaluation Failure Story
+
+The final real-provider workflow run passed `36/36`, used pgvector, and cost an estimated `$0.00062828` in DeepSeek API usage. The separate challenge still exposes misses around `financial exposure` versus `liability`, `handover` versus `delivery`, and disagreement/forum wording versus dispute clauses. The first real run passed only `31/36` and exposed an identifier gate bug plus brittle metrics; the fixes and progression are documented rather than hidden. See `docs/evaluation_failure_analysis.md`.
+
 ## PostgreSQL + pgvector Story
 
 The pgvector path is there to show that the project can move beyond toy local search. In PostgreSQL mode, chunks keep their JSON embedding metadata and also populate `embedding_vector`. The smoke script verifies the extension, vector column type, stored vector count, answerable retrieval, `retrieval_method: "pgvector"`, and the exact insufficient-evidence fallback.
@@ -150,17 +156,17 @@ SQLite mode is intentionally retained because it makes the project easy to run o
 | Document parsing | Implemented | PyMuPDF for PDFs; seeded text path for eval/demo. |
 | Page-aware chunking | Implemented | Chunks preserve document id and page number. |
 | Local embeddings | Fallback/local | Deterministic hash vectors for tests and no-key demos. |
-| OpenAI-compatible embeddings | Optional real provider | Validated by provider smoke when env vars are set. |
+| OpenAI-compatible embeddings | Verified | Local Ollama `embeddinggemma`; hosted providers remain optional. |
 | SQLite retrieval | Fallback/local | JSON embeddings plus hybrid retrieval. |
 | PostgreSQL pgvector retrieval | Implemented | Smoke script verifies pgvector path. |
 | Guarded LLM synthesis | Implemented | Skipped when evidence is insufficient. |
-| OpenAI-compatible LLM | Optional real provider | Validated by provider smoke when env vars are set. |
+| OpenAI-compatible LLM | Verified | DeepSeek `deepseek-v4-flash` exercised with guarded evidence. |
 | Risk review | Implemented | Rule-based procurement checks. |
 | Cross-document diff | Implemented | Regex field extraction plus structured diff rows. |
 | Agent trace | Implemented | Tool calls and runs are logged. |
 | Evidence chunk navigation | Implemented | Q&A cards link to document detail chunks. |
 | Markdown review export | Implemented | Document detail exports extracted fields, risk findings, and chunk index. |
-| Evaluation runner | Implemented | Smoke and demo eval datasets. |
+| Evaluation runner | Implemented | 36 workflow cases plus a 16-case retrieval challenge and failure report. |
 | Provider smoke | Implemented | Local pass, real-provider skip/pass, dimension check. |
 | OCR | Future | Intentionally not part of the current phase. |
 | PDF evidence highlighting | Future | Chunk links exist; pixel-perfect PDF highlights are future work. |
@@ -172,7 +178,7 @@ SQLite mode is intentionally retained because it makes the project easy to run o
 - Implemented guarded LLM synthesis that only answers from retrieved page-level evidence and returns a deterministic insufficient-evidence fallback when support is weak.
 - Designed a lightweight tool-calling agent workflow for evidence search, rule-based risk review, cross-document diff, report generation, and trace logging.
 - Added provider abstractions and smoke validation for deterministic local providers and optional OpenAI-compatible embedding/LLM providers.
-- Created an evaluation runner and synthetic tender/contract dataset covering retrieval, refusal behavior, risk findings, diff accuracy, and agent routing.
+- Created a 36-case workflow eval and 16-case retrieval benchmark covering Recall@k, MRR, refusal behavior, hard negatives, prompt injection, risk/diff accuracy, routing, latency, and cost observability.
 
 ## Current Limitations
 
@@ -181,7 +187,8 @@ SQLite mode is intentionally retained because it makes the project easy to run o
 - Field extraction is regex-based and intentionally simple.
 - Risk rules are deterministic checks, not legal analysis.
 - OCR and pixel-perfect PDF visual highlighting are not implemented yet.
-- Real provider validation requires user-supplied API credentials in environment variables.
+- DeepSeek requires a user-supplied key; local Ollama embedding does not.
+- The best measured 16-case retrieval Recall@5 is `0.6875`, so semantic hard negatives remain.
 - DOCX parsing extracts text but does not preserve Word layout, comments, tracked changes, or page numbers.
 
 ## Possible Interview Q&A
@@ -201,14 +208,20 @@ It is a lightweight router over real tools: evidence search, risk rule check, cr
 **Is there PDF highlighting?**
 Not yet. The current UI links evidence cards to page-aware chunks in document detail, which is enough to demonstrate traceability without adding a heavy PDF highlighter.
 
+**Why did you not add a reranker?**
+The real benchmark improved Recall@5 from `0.5625` to `0.6875` but retained five failures. I would first test model-specific query/document encoding or query expansion, then add a reranker only as another measured row.
+
 **What would you improve next?**
-I would validate a real provider, add public tender PDFs, add CI pgvector tests, improve field extraction with layout/table parsing, and add PDF evidence highlighting later.
+I would replace part of the synthetic corpus with public Chinese tender documents and manually reviewed labels, test retrieval changes against the five measured failures, add CI pgvector coverage, and improve layout-aware field extraction.
 
 ## What I Would Improve Next
 
-- Validate a real embedding model and real LLM provider with non-secret local env vars.
-- Add public tender PDFs and more realistic eval cases.
+- Add public, non-confidential Chinese tender documents and human-reviewed eval labels.
+- Test query/document encoding and optional reranking against the measured hard-negative failures.
 - Add CI coverage for PostgreSQL + pgvector.
 - Improve field extraction with layout-aware table parsing.
-- Add PDF page preview and evidence highlight anchors.
-- Add optional OCR as an isolated worker for scanned PDFs.
+- Expand adversarial and citation-faithfulness evaluation based on observed failures.
+
+## China-Facing Interview Relevance
+
+For China AI application roles, frame the project around engineering evidence rather than model branding: measurable retrieval quality, failure categories, latency/token/cost observability, provider portability, guarded generation, and repeatable regression. The strongest follow-up proof is the completed real-provider report, not more UI pages or a more complicated agent graph.

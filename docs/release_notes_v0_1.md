@@ -15,9 +15,10 @@
 - Rule-based procurement risk review.
 - Cross-document field and clause comparison.
 - Lightweight agent tool workflow and trace logging.
-- Synthetic tender/contract demo pack and expanded 18-case eval dataset.
-- Provider smoke, pgvector smoke, eval runner, and root verification script.
+- Synthetic tender/contract demo pack, 36-case workflow eval, and 16-case retrieval challenge dataset.
+- Provider smoke, pgvector smoke, eval runner, retrieval benchmark, failure analysis, and root verification script.
 - Real-provider demo wrapper that records an ignored eval report when real providers are configured.
+- Verified Ollama `embeddinggemma` + DeepSeek `deepseek-v4-flash` + PostgreSQL pgvector execution with cache-aware cost metrics.
 - GitHub Actions CI for backend tests/Ruff and frontend typecheck/build.
 - Interview brief, demo walkthrough, architecture docs, and roadmap.
 
@@ -38,19 +39,20 @@ The current release is verified with:
 
 ## Known Limitations
 
-- Local embeddings are deterministic hash vectors, not semantic embeddings.
+- The default test embedding is deterministic; verified Ollama semantic retrieval remains local and model-dependent.
 - SQLite retrieval is a fallback path, not production vector search.
 - Field extraction is regex-based and intentionally simple.
 - DOCX parsing extracts text but not Word layout, comments, tracked changes, or page numbers.
 - Risk rules are deterministic review signals, not legal analysis.
-- Real provider validation requires user-supplied API credentials.
+- DeepSeek validation requires a user-supplied key; local Ollama embedding does not.
+- The 16-case semantic retrieval challenge remains imperfect; the best measured Recall@5 is `0.6875`.
 - OCR is not implemented.
 - Pixel-perfect PDF evidence highlighting is not implemented; current evidence navigation is chunk-level.
 
 ## Next Phase Candidates
 
-- Validate a real embedding model and real LLM provider.
-- Add public tender PDFs and more realistic eval cases.
+- Add public Chinese tender documents and human-reviewed eval labels.
+- Test query/document encoding and optional reranking against the measured retrieval failures.
 - Add PostgreSQL + pgvector CI integration tests.
 - Improve field extraction with layout-aware parsing and table handling.
 - Add optional OCR as an isolated worker.

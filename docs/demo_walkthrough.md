@@ -133,10 +133,22 @@ What is the vendor tax ID?
 
 ```bash
 cd backend
-.venv/bin/python -m app.evaluation.run_eval --dataset ../data/eval_cases/rag_demo.json
+EMBEDDING_PROVIDER=local LLM_PROVIDER=local_fake \
+  .venv/bin/python -m app.evaluation.run_eval \
+  --dataset ../data/eval_cases/rag_demo.json \
+  --failure-report ../data/eval_reports/latest_failure_analysis.md
 ```
 
-The output reports total cases, passed cases, pass rate, metric summary, retrieval methods, provider mode, and database mode.
+The output reports 36 workflow cases, pass rate, metric summary, retrieval methods, provider mode, database mode, ranking metrics, latency, tokens, and estimated cost.
+
+Run the separate retrieval challenge:
+
+```bash
+EMBEDDING_PROVIDER=local LLM_PROVIDER=local_fake \
+  .venv/bin/python scripts/run_retrieval_benchmark.py \
+  --output-json ../data/eval_reports/retrieval_benchmark.json \
+  --output-markdown ../data/eval_reports/retrieval_benchmark.md
+```
 
 ## Run Full Local Verification
 
@@ -146,7 +158,7 @@ From the project root:
 python3 scripts/verify_all.py
 ```
 
-This runs backend tests, Ruff, provider smoke, smoke eval, demo eval, frontend typecheck, and frontend build.
+This runs backend tests, Ruff, provider smoke, smoke eval, the 36-case demo eval, the 16-case retrieval benchmark, frontend typecheck, and frontend build. It overrides `backend/.env` with local providers and a temporary SQLite database, so it does not call DeepSeek even when a real key is configured.
 
 ## Validate Providers
 
@@ -162,31 +174,31 @@ LLM_PROVIDER=local_fake \
 
 It works without API keys, is deterministic, and is suitable for tests. It is not meant to prove semantic embedding quality.
 
-Real-provider mode is optional. Export provider keys in the shell or an untracked `.env` file, then run:
+The verified semantic embedding path uses local Ollama, so only the DeepSeek LLM needs a real secret. Put that key in an untracked `.env`, then run:
 
 ```bash
 cd backend
 EMBEDDING_PROVIDER=openai_compatible \
-EMBEDDING_API_KEY=your_embedding_key_here \
-EMBEDDING_BASE_URL=https://your-openai-compatible-base-url \
-EMBEDDING_MODEL=your_embedding_model \
-EMBEDDING_DIMENSION=your_embedding_dimension \
+EMBEDDING_API_KEY=ollama \
+EMBEDDING_BASE_URL=http://localhost:11434/v1 \
+EMBEDDING_MODEL=embeddinggemma \
+EMBEDDING_DIMENSION=64 \
 LLM_PROVIDER=openai_compatible \
-LLM_API_KEY=your_llm_key_here \
-LLM_BASE_URL=https://your-openai-compatible-base-url \
-LLM_MODEL=your_llm_model \
+LLM_API_KEY=your_deepseek_key_here \
+LLM_BASE_URL=https://api.deepseek.com \
+LLM_MODEL=deepseek-v4-flash \
 .venv/bin/python scripts/smoke_providers.py
 ```
 
 If keys are missing, the smoke command prints `skipped` for real providers and exits successfully. If dimensions mismatch, it fails with the expected and actual vector lengths.
 
-To run provider smoke and then the demo eval in one command when real providers are configured:
+To run the complete real-provider experiment, first start PostgreSQL and export the provider keys, models, dimensions, and current price settings shown in `docs/real_provider_demo.md`. Then run from the project root:
 
 ```bash
 python3 scripts/real_provider_demo.py
 ```
 
-The generated eval report is written to `data/eval_reports/latest_real_provider_eval.json`, which is ignored by Git.
+The script requires semantic embedding, real LLM, and pgvector rows to execute. It writes ignored eval, benchmark, and failure-analysis reports under `data/eval_reports/`; eval failures are retained for analysis, while infrastructure fallback still fails the run.
 
 ## Run PostgreSQL + pgvector Smoke
 
@@ -230,13 +242,15 @@ python3 scripts/verify_all.py --with-pgvector
 ## Interview Metrics To Mention
 
 - Retrieval hit and evidence page hit for answerable Q&A.
+- Recall@1/3/5, MRR, and nDCG@5 from the retrieval challenge.
+- Keyword/local baseline failures and why they justify measuring real embeddings before adding a reranker.
 - Exact insufficient-evidence correctness for unsupported questions.
 - Risk category/keyword hit for deterministic rule checks.
 - Diff field/keyword hit for changed contract fields.
 - Tool-call correctness for agent routing.
-- Average retrieval score and observed retrieval method.
+- Average retrieval score, latency, token usage, estimated cost, and observed retrieval method.
 - Provider mode and database mode, showing SQLite fallback and PostgreSQL pgvector verification.
-- Provider smoke result, explaining that local deterministic providers are for repeatable tests and real provider mode is validated separately.
+- Provider smoke result, explaining that local deterministic providers are for repeatable tests and that real-provider status remains skipped until credentials are supplied.
 
 ## Boundaries
 

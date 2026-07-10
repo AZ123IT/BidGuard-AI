@@ -94,11 +94,16 @@ async def upload_document(
     saved_path.write_bytes(content)
     document.source_path = str(saved_path)
     try:
-        _store_extraction(session, document, pages, request.app.state.settings)
+        embedding_usage = _store_extraction(
+            session,
+            document,
+            pages,
+            request.app.state.settings,
+        )
     except EmbeddingError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
     session.flush()
-    return _document_detail(document)
+    return _document_detail(document) | {"embedding_usage": embedding_usage}
 
 
 @router.get("/documents")
@@ -216,14 +221,19 @@ def seed_text_document(
     session.add(document)
     session.flush()
     try:
-        _store_extraction(session, document, pages, request.app.state.settings)
+        embedding_usage = _store_extraction(
+            session,
+            document,
+            pages,
+            request.app.state.settings,
+        )
     except EmbeddingError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
     session.flush()
-    return _document_detail(document)
+    return _document_detail(document) | {"embedding_usage": embedding_usage}
 
 
-def _store_extraction(session: Session, document: Document, pages: list[dict], settings) -> None:
+def _store_extraction(session: Session, document: Document, pages: list[dict], settings) -> dict:
     session.execute(delete(DocumentChunk).where(DocumentChunk.document_id == document.id))
     session.execute(delete(ExtractedField).where(ExtractedField.document_id == document.id))
     chunk_payloads = chunk_pages(document.id, pages)
@@ -253,6 +263,7 @@ def _store_extraction(session: Session, document: Document, pages: list[dict], s
                 evidence_text=field["evidence_text"],
             )
         )
+    return dict(provider.last_call)
 
 
 def _document_summary(document: Document) -> dict:

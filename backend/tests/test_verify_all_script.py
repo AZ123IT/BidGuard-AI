@@ -25,10 +25,26 @@ def test_verify_all_default_plan_lists_required_checks():
         "provider smoke",
         "smoke eval",
         "demo eval",
+        "retrieval benchmark",
         "frontend typecheck",
         "frontend build",
     ]
     assert all("docker" not in step.command[0] for step in plan)
+
+    local_steps = {
+        step.label: step
+        for step in plan
+        if step.label in {"backend tests", "provider smoke", "smoke eval", "demo eval", "retrieval benchmark"}
+    }
+    assert local_steps
+    for step in local_steps.values():
+        assert step.env["DATABASE_URL"].startswith("sqlite:///")
+        assert step.env["EMBEDDING_PROVIDER"] == "local"
+        assert step.env["EMBEDDING_MODEL"] == "local-hash-v1"
+        assert step.env["LLM_PROVIDER"] == "local_fake"
+        assert step.env["LLM_MODEL"] == "local-fake-v1"
+        assert step.env["EMBEDDING_API_KEY"] == ""
+        assert step.env["LLM_API_KEY"] == ""
 
 
 def test_verify_all_pgvector_plan_stops_container_after_smoke():

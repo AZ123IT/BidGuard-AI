@@ -13,7 +13,7 @@ For the full local verification workflow, run this from the project root:
 python3 scripts/verify_all.py
 ```
 
-It runs backend tests, Ruff, provider smoke, smoke eval, demo eval, frontend typecheck, and frontend build. Add `--with-pgvector` when Docker is available and you want PostgreSQL pgvector smoke verification in the same command.
+It runs backend tests, Ruff, provider smoke, smoke eval, the 36-case demo eval, the retrieval challenge benchmark, frontend typecheck, and frontend build. Add `--with-pgvector` when Docker is available and you want PostgreSQL pgvector smoke verification in the same command.
 
 The runner loads `data/eval_cases/rag_smoke.json` by default. The richer demo dataset is:
 
@@ -23,6 +23,17 @@ cd backend
 ```
 
 The runner seeds the required synthetic sample documents for the current run, executes Q&A, insufficient-evidence, risk, diff, and agent-routing cases, and prints JSON metrics plus observability fields.
+
+The separate 16-case retrieval challenge compares keyword, local deterministic, configured real embedding, and PostgreSQL pgvector modes:
+
+```bash
+cd backend
+.venv/bin/python scripts/run_retrieval_benchmark.py \
+  --output-json ../data/eval_reports/retrieval_benchmark.json \
+  --output-markdown ../data/eval_reports/retrieval_benchmark.md
+```
+
+Use `--require-real --require-pgvector` for the final real experiment. Either missing mode then returns exit code `2` instead of silently presenting a partial comparison.
 
 Provider validation is separate from the eval runner so normal tests never need real API keys:
 
@@ -38,7 +49,8 @@ Optional JSON report:
 ```bash
 .venv/bin/python -m app.evaluation.run_eval \
   --dataset ../data/eval_cases/rag_demo.json \
-  --output-json ../data/eval_reports/latest_eval.json
+  --output-json ../data/eval_reports/latest_eval.json \
+  --failure-report ../data/eval_reports/latest_failure_analysis.md
 ```
 
 The output includes:
@@ -47,7 +59,9 @@ The output includes:
 - database mode: `sqlite`, `postgres`, or `postgres_pgvector`,
 - retrieval methods observed, such as `hybrid_fallback` or `pgvector`,
 - average evidence score across answerable cases,
-- per-case evidence count, average score, synthesis provider, and whether LLM synthesis was used.
+- per-case evidence count, average score, synthesis provider, and whether LLM synthesis was used,
+- Recall@1/3/5, MRR, and nDCG@5 for cases with labelled evidence,
+- embedding and LLM token counts, cache-hit/cache-miss usage, latency, configured cost basis, and estimated cost,
 - risk category and keyword hits,
 - diff field and keyword hits,
 - failed case ids.
@@ -76,17 +90,19 @@ The pgvector smoke script checks connection mode, pgvector extension availabilit
 - Provider/database mode: whether the run used local providers, OpenAI-compatible providers, SQLite, or PostgreSQL pgvector.
 - Provider smoke status: whether local providers passed, real providers passed, or real providers were skipped because keys were absent.
 - Latency: endpoint and tool-call execution time.
-- Token cost: future LLM and embedding provider usage cost.
+- Token cost: provider-reported cache-hit, cache-miss, and output usage multiplied by configured per-million-token rates; ingestion and query usage are recorded separately before aggregation.
 
 ## Test Sets
 
 1. Direct lookup questions where the answer is present on one page.
 2. Missing-evidence questions where refusal is expected.
-3. Risk-rule cases with known payment, acceptance, dispute, and scoring findings.
-4. Cross-document comparisons with one controlled field changed.
-5. Agent objectives that should trigger retrieval only, risk plus retrieval, or diff plus retrieval.
+3. Hard negatives with similar but incorrect clauses or document versions.
+4. Prompt-injection text that must not become answer evidence.
+5. Risk-rule cases with known payment, acceptance, dispute, and scoring findings.
+6. Cross-document comparisons with controlled field changes.
+7. Agent objectives that should trigger retrieval, risk, or diff tools.
 
-The demo eval currently uses 18 synthetic cases across all five categories.
+The workflow eval uses 36 synthetic cases. The retrieval benchmark adds 16 focused challenge cases; it is separate so a workflow-regression pass rate is not confused with semantic retrieval quality.
 
 ## Scoring Approach
 
@@ -100,3 +116,5 @@ Start with deterministic checks:
 - expected agent tools appear in the trace.
 
 Only after this baseline should LLM-judged faithfulness or Ragas integration be introduced.
+
+Do not add a reranker merely to make the architecture look more advanced. The measured 64-dimensional semantic row improves Recall@5 from `0.5625` to `0.6875` but leaves five hard failures. Test simpler query/document encoding changes first, then add a reranker only as a measured comparison row.
