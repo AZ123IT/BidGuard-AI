@@ -6,6 +6,28 @@ It demonstrates document parsing, RAG retrieval, page-level evidence citation, g
 
 BidGuard AI is not an enterprise SaaS platform and does not provide professional legal advice.
 
+## Product Tour
+
+### Review Dashboard
+
+![BidGuard AI review dashboard](docs/assets/screenshots/dashboard.png)
+
+### Document Ingestion and Evidence Inspection
+
+| Upload and parse documents | Inspect extracted fields |
+| --- | --- |
+| ![Document upload and parsing status](docs/assets/screenshots/document-ingestion.png) | ![Document metadata and extracted fields](docs/assets/screenshots/document-detail.png) |
+
+### Evidence-first Q&A
+
+Answers expose the source document, page, chunk, retrieval method, and score instead of presenting unsupported model output as fact.
+
+![Evidence-first question answering with pgvector retrieval](docs/assets/screenshots/evidence-qa.png)
+
+### Cross-document Comparison
+
+![Structured comparison of extracted tender and contract fields](docs/assets/screenshots/cross-document-compare.png)
+
 ## Project Status
 
 | Category | Status | Notes |

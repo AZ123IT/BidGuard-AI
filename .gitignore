@@ -27,3 +27,6 @@ data/eval_reports/
 .DS_Store
 .idea/
 .vscode/
+
+# Local screenshot source files (curated copies live in docs/assets/screenshots)
+/运行截图/
