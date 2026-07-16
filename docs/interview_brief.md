@@ -1,5 +1,7 @@
 # BidGuard AI Interview Brief
 
+For a detailed Chinese interview question bank with implementation-level answers, metrics, failure analysis, and pressure questions, see [`interview_qa_cn.md`](interview_qa_cn.md).
+
 ## Positioning
 
 BidGuard AI is an evidence-first tender and contract document review agent. It is a portfolio-level AI engineering project, not an enterprise SaaS product and not a legal-advice product.

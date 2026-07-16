@@ -338,6 +338,8 @@ Use `docs/interview_brief.md` for:
 - resume-ready bullets,
 - likely interview Q&A.
 
+Use `docs/interview_qa_cn.md` for the complete Chinese preparation set: 80 implementation-level questions, detailed answers, retrieval metrics, failure analysis, pressure questions, and a list of claims to avoid overstating.
+
 See `docs/release_notes_v0_1.md` for the current packaged release summary.
 
 ## Safe GitHub Push Checklist
