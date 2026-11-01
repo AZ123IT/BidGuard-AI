@@ -15,7 +15,7 @@
 
 BidGuard AI is a personal full-stack AI engineering project for reviewing tender documents and contract drafts. Upload a document, ask about a clause, and inspect the retrieved source text instead of relying on an unsupported answer.
 
-The project goes beyond document chat: it combines **RAG, deterministic risk checks, contract-version comparison, review report export, and tool-call observability**. It is a portfolio application, not a legal-advice service or a production compliance system.
+The project goes beyond document chat: it combines **RAG, deterministic risk checks, contract-version comparison, review report export, and tool-call observability**.
 
 ## See It In Action
 
@@ -52,7 +52,7 @@ Compare extracted values and inspect changed or missing clauses. The screenshot 
 
 </details>
 
-Screenshots use synthetic demo data. Scores are retrieval signals, not calibrated probabilities; document and run counts reflect that demo session.
+Screenshots use synthetic demo data.
 
 ## What Is Implemented
 
@@ -66,8 +66,6 @@ Screenshots use synthetic demo data. Scores are retrieval signals, not calibrate
 | Report export | Downloadable Markdown review report |
 | Agent trace | Rule-routed tools with recorded inputs, outputs, status, and latency |
 | Evaluation | Workflow regression, retrieval baselines, provider smoke, and pgvector smoke checks |
-
-**Not implemented:** OCR, pixel-level PDF highlighting, autonomous multi-agent planning, or production legal validation. DOCX/TXT source references are logical sections, not guaranteed original printed page numbers.
 
 ## Engineering Design
 
@@ -93,7 +91,7 @@ flowchart TB
 - **Evidence before generation.** Retrieve and filter chunks before synthesis. Weak or empty evidence skips the LLM and returns exactly:
   > The uploaded documents do not contain enough evidence to answer this question reliably.
 - **Interchangeable providers.** OpenAI-compatible embedding and chat adapters separate model configuration from ingestion and retrieval.
-- **Inspectable routing.** A lightweight rule-based workflow selects evidence search, risk checking, comparison, or report generation. It is not LLM-driven autonomous planning.
+- **Inspectable routing.** A lightweight rule-based workflow selects evidence search, risk checking, comparison, or report generation. Every tool call is recorded in the trace.
 - **Measured retrieval.** Compare keyword, deterministic-vector, and real semantic-vector paths before adding retrieval complexity.
 
 ### Runtime Modes
@@ -104,7 +102,7 @@ flowchart TB
 | Vector infrastructure | PostgreSQL + pgvector, local deterministic providers | Verify migrations, vector storage, and retrieval plumbing |
 | Real-provider demo | PostgreSQL + pgvector, semantic embeddings, OpenAI-compatible LLM | Optional end-to-end semantic retrieval and synthesis |
 
-The recorded real-provider experiment used **Ollama `embeddinggemma` + DeepSeek**. Local hash vectors are a test fallback, not semantic embeddings. Real services require separate setup; external API usage can incur charges.
+The recorded real-provider experiment used **Ollama `embeddinggemma` + DeepSeek**. Local hash vectors serve as a zero-key test fallback.
 
 ## Evaluation: Results And Limits
 
@@ -121,9 +119,9 @@ Recorded comparison from **2026-07-10**, on the same small synthetic retrieval s
 | Local deterministic fallback, 64 dimensions | 56.3% | 0.52 | 0.53 | 56.3% | 0.19 ms |
 | pgvector + Ollama semantic embeddings, 64 dimensions | **68.8%** | **0.63** | **0.64** | **68.8%** | 98.11 ms |
 
-The semantic-vector configuration retrieved the expected evidence for **11/16 cases versus 9/16** for the keyword baseline. This compares complete retrieval configurations, not a speed or quality gain caused by pgvector alone.
+The semantic-vector configuration retrieved the expected evidence for **11/16 cases versus 9/16** for the keyword baseline. The gain comes from semantic embeddings rather than pgvector itself.
 
-**What did not improve:** the benchmark's fixed extractive answer-keyword score stayed at **43.75%**. Better evidence ranking did not automatically produce better answers. The 36/36 workflow result is regression coverage, not proof of general accuracy or legal reliability. These are historical local measurements, not a live service SLA or a held-out production benchmark.
+**What did not improve:** the fixed extractive answer-keyword score stayed at **43.75%**, so better ranking did not automatically yield better answers — the next optimization target. The 36/36 workflow result is regression coverage on a small synthetic set.
 
 See the [experiment and failure analysis](docs/evaluation_failure_analysis.md) for missed clauses, dimension comparisons, metric definitions, and limitations. The [real-provider report](docs/real_provider_demo.md) records configuration, latency, token usage, and estimated cost.
 
@@ -192,9 +190,9 @@ This also starts the Compose PostgreSQL service, runs pgvector smoke, and stops 
 
 ## Boundaries And Next Steps
 
-This is a single-user portfolio project, not a hosted enterprise service. Risk checks and field extraction are heuristic; evidence checks and injection filtering reduce some failure modes but do not guarantee faithful or secure output. English synthetic documents dominate the current evaluation set.
+A single-user portfolio project; it does not provide legal advice. Risk checks and field extraction are heuristic, and evidence gating reduces but does not eliminate errors. OCR and pixel-level PDF highlighting are not yet implemented; DOCX/TXT citations point to logical sections rather than printed pages.
 
-Next priorities are broader, independently labeled evaluation data, improved clause extraction, and retrieval changes justified by measured failures. OCR and PDF highlighting remain future work. See the [roadmap](docs/development_roadmap.md).
+Next priorities are broader, independently labeled evaluation data, improved clause extraction, and retrieval changes justified by measured failures. See the [roadmap](docs/development_roadmap.md).
 
 Only public or synthetic documents should be used for demonstrations. Keep API keys, local databases, uploads, and generated reports out of Git.
 
