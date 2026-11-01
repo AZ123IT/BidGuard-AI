@@ -47,23 +47,20 @@ DOCX/TXT 的来源引用是逻辑段落或文本分组，不保证与原文件�
 
 ```mermaid
 flowchart TB
-    subgraph Ingest[文档入库]
-        A[PDF / DOCX / TXT] --> B[解析与分块<br/>页码 + chunk 元数据]
-        B --> C[Embedding Provider<br/>OpenAI-compatible]
-        C --> D[(SQLite / PostgreSQL<br/>pgvector)]
-    end
-    subgraph Query[审查请求]
-        Q[用户问题 / 审查目标] --> R{Agent 工具路由}
-        R -->|问答| S[证据检索<br/>关键词 + 语义混合]
-        R -->|风险| K[8 条确定性风险规则]
-        R -->|比较| F[跨文档字段 Diff]
-        R -->|报告| M[Markdown 报告导出]
-        S --> G{证据充分性门控<br/>弱证据 / 注入过滤}
-        G -->|通过| L[LLM 受约束生成<br/>附原文引用]
-        G -->|不足| X[固定拒答<br/>不调用 LLM]
-    end
-    D --> S
-    L & X & K & F & M --> T[(Agent Trace<br/>输入 / 输出 / 耗时)]
+    UI["Next.js 审查控制台"] --> API["FastAPI"]
+    API --> Ingest["解析与分块（PDF / DOCX / TXT）"]
+    Ingest --> Embed["Embedding Provider（OpenAI-compatible）"]
+    Embed --> Store[("SQLite 或 PostgreSQL + pgvector")]
+    API --> Router["规则化工具路由"]
+    Router --> Retrieve["证据检索（关键词 + 语义）"]
+    Store --> Retrieve
+    Router --> Tools["风险规则 / 文档比较 / 报告导出"]
+    Retrieve --> Gate{"证据充分性门控"}
+    Gate -->|通过| Answer["LLM 受约束生成 + 原文引用"]
+    Gate -->|不足或疑似注入| Refuse["固定拒答，不调用 LLM"]
+    Router --> Trace["Agent 与工具调用 Trace"]
+    Eval["评估脚本"] --> Retrieve
+    Eval --> Router
 ```
 
 - **不仅是文档聊天：** 集成规则检查、合同版本比较、报告导出和可查看的工具调用记录。
