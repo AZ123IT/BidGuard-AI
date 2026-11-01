@@ -46,7 +46,7 @@ DOCX/TXT 的来源引用是逻辑段落或文本分组，不保证与原文件�
 核心链路：
 
 ```mermaid
-flowchart LR
+flowchart TB
     subgraph Ingest[文档入库]
         A[PDF / DOCX / TXT] --> B[解析与分块<br/>页码 + chunk 元数据]
         B --> C[Embedding Provider<br/>OpenAI-compatible]
