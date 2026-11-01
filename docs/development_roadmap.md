@@ -37,7 +37,7 @@
 - Expanded `rag_demo.json` eval dataset covering Q&A, insufficient evidence, risk rules, diff, and agent routing.
 - Eval runner CLI support for `--dataset` and optional `--output-json`.
 - Metric summary for retrieval, evidence page, answer keyword, insufficient-evidence, tool-call, risk, and diff checks.
-- Demo walkthrough documentation for interviews.
+- End-to-end demo walkthrough documentation.
 
 ## Phase 2.4 Included
 
@@ -49,14 +49,12 @@
 ## Phase 2.5 Included
 
 - Root verification script for backend tests, Ruff, provider smoke, evals, frontend checks, and optional pgvector smoke.
-- Interview brief with architecture summary, feature matrix, limitations, and resume-ready project bullets.
 - Demo walkthrough polish for local UI demo, SQLite eval, provider smoke, PostgreSQL pgvector smoke, and optional real-provider validation.
-- README portfolio snapshot and recruiter-friendly verification instructions.
+- README project snapshot and one-command verification instructions.
 
 ## Phase 2.6 Included
 
 - GitHub-facing README structure with quick start, verification, demo workflow, provider modes, pgvector notes, limitations, and roadmap.
-- Interview brief cleanup with 30-second explanation, 2-minute technical explanation, and likely interview Q&A.
 - Final demo script with answerable Q&A, insufficient-evidence refusal, risk review, diff, agent trace, eval, and pgvector smoke.
 - v0.1 release notes summarizing included features, verification, limitations, and next steps.
 
@@ -66,7 +64,7 @@
 - Q&A evidence cards link back to source chunks with page/chunk query parameters.
 - Agent trace page readability improvements for final answer, ordered tools, evidence counts, latency, timestamps, and retrieval methods.
 - Minimal GitHub Actions CI for backend tests, backend Ruff, frontend typecheck, and frontend build without real API keys.
-- README, demo walkthrough, interview brief, architecture, evaluation, database, agent, and release-note cleanup for GitHub/resume readiness.
+- README, demo walkthrough, architecture, evaluation, database, agent, and release-note cleanup.
 
 ## Phase 3.5 Real Provider Demo Status
 

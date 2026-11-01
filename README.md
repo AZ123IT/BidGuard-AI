@@ -5,6 +5,11 @@
 **招投标与合同文档审查 RAG Agent：回答附原文证据，风险检查与工具调用过程可追溯。**
 
 [![CI](https://github.com/AZ123IT/BidGuard-AI/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/AZ123IT/BidGuard-AI/actions/workflows/ci.yml)
+![Python](https://img.shields.io/badge/Python-3.11+-3776AB?logo=python&logoColor=white)
+![FastAPI](https://img.shields.io/badge/FastAPI-009688?logo=fastapi&logoColor=white)
+![Next.js](https://img.shields.io/badge/Next.js-000000?logo=nextdotjs&logoColor=white)
+![pgvector](https://img.shields.io/badge/PostgreSQL-pgvector-4169E1?logo=postgresql&logoColor=white)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 [演示步骤](docs/demo_walkthrough.md) · [系统架构](docs/architecture.md) · [实验与失败分析](docs/evaluation_failure_analysis.md)
 
@@ -40,11 +45,25 @@ DOCX/TXT 的来源引用是逻辑段落或文本分组，不保证与原文件�
 
 核心链路：
 
-```text
-上传文档 → 解析与分块 → Embedding → 存储
-用户问题 → 证据检索 → 证据检查 → 受约束生成 / 固定拒答
-                                  ↓
-                         原文引用与工具调用记录
+```mermaid
+flowchart LR
+    subgraph Ingest[文档入库]
+        A[PDF / DOCX / TXT] --> B[解析与分块<br/>页码 + chunk 元数据]
+        B --> C[Embedding Provider<br/>OpenAI-compatible]
+        C --> D[(SQLite / PostgreSQL<br/>pgvector)]
+    end
+    subgraph Query[审查请求]
+        Q[用户问题 / 审查目标] --> R{Agent 工具路由}
+        R -->|问答| S[证据检索<br/>关键词 + 语义混合]
+        R -->|风险| K[8 条确定性风险规则]
+        R -->|比较| F[跨文档字段 Diff]
+        R -->|报告| M[Markdown 报告导出]
+        S --> G{证据充分性门控<br/>弱证据 / 注入过滤}
+        G -->|通过| L[LLM 受约束生成<br/>附原文引用]
+        G -->|不足| X[固定拒答<br/>不调用 LLM]
+    end
+    D --> S
+    L & X & K & F & M --> T[(Agent Trace<br/>输入 / 输出 / 耗时)]
 ```
 
 - **不仅是文档聊天：** 集成规则检查、合同版本比较、报告导出和可查看的工具调用记录。
@@ -69,11 +88,11 @@ DOCX/TXT 的来源引用是逻辑段落或文本分组，不保证与原文件�
 
 以下为 **2026-07-10 的历史本地实验**，使用同一组合成检索案例：
 
-| 检索配置 | Recall@5 | MRR | 平均检索延迟 |
-| --- | ---: | ---: | ---: |
-| Keyword baseline | 56.3% | 0.52 | 0.16 ms |
-| 本地确定性向量，64 维 | 56.3% | 0.52 | 0.19 ms |
-| pgvector + Ollama 语义向量，64 维 | 68.8% | 0.63 | 98.11 ms |
+| 检索配置 | Recall@5 | MRR | nDCG@5 | 证据页命中 | 平均检索延迟 |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Keyword baseline | 56.3% | 0.52 | 0.53 | 56.3% | 0.16 ms |
+| 本地确定性向量，64 维 | 56.3% | 0.52 | 0.53 | 56.3% | 0.19 ms |
+| pgvector + Ollama 语义向量，64 维 | **68.8%** | **0.63** | **0.64** | **68.8%** | 98.11 ms |
 
 语义向量配置的预期证据命中从 **9/16 增至 11/16**，但固定抽取式答案的关键词命中率仍是 **43.75%**。说明检索改善并不自动意味着回答改善，也不能把差异归因于 pgvector 数据库本身。
 
@@ -143,7 +162,6 @@ python3 scripts/verify_all.py --with-pgvector
 - [架构设计](docs/architecture.md)与[数据库设计](docs/database_design.md)：模块职责、持久化、SQLite 和 pgvector 路径。
 - [Agent 工作流](docs/agent_workflow.md)：工具路由、证据检查和日志行为。
 - [评估设计](docs/evaluation_plan.md)与[失败分析](docs/evaluation_failure_analysis.md)：指标定义、实测结果和失败原因。
-- [面试项目简述](docs/interview_brief.md)与[中文系统学习手册](docs/system_learning_cn.md)：技术原理、设计取舍和追问准备。
 - [文档索引](docs/README.md)、[发布说明](docs/release_notes_v0_1.md)与[后续路线图](docs/development_roadmap.md)。
 
 ## 当前边界
@@ -151,3 +169,7 @@ python3 scripts/verify_all.py --with-pgvector
 这是单用户作品集项目，不是商业级合同审查平台。字段抽取和风险检查仍以启发式规则为主；证据门控与注入过滤不能保证所有回答正确或阻止所有攻击。OCR、PDF 高亮与生产级法律验证尚未实现。
 
 后续优先扩大独立标注的评估数据、改善条款抽取，并根据失败分析调整检索。演示仅使用公开或合成文档；密钥、数据库、上传文件和生成报告不应进入 Git。
+
+## License
+
+[MIT](LICENSE)

@@ -20,7 +20,7 @@
 - Real-provider demo wrapper that records an ignored eval report when real providers are configured.
 - Verified Ollama `embeddinggemma` + DeepSeek `deepseek-v4-flash` + PostgreSQL pgvector execution with cache-aware cost metrics.
 - GitHub Actions CI for backend tests/Ruff and frontend typecheck/build.
-- Interview brief, demo walkthrough, architecture docs, and roadmap.
+- Demo walkthrough, architecture docs, and roadmap.
 
 ## Verification Snapshot
 

@@ -64,7 +64,7 @@ flowchart TD
 - `data/sample_docs/sample_tender.*`: minimal smoke sample.
 - `data/sample_docs/demo_pack/`: synthetic tender, contract draft, revised addendum, risky terms, and policy notice.
 - `data/eval_cases/rag_smoke.json`: small smoke eval.
-- `data/eval_cases/rag_demo.json`: interview-ready eval covering evidence Q&A, insufficient evidence, risk rules, cross-document diff, and agent routing.
+- `data/eval_cases/rag_demo.json`: end-to-end workflow eval covering evidence Q&A, insufficient evidence, risk rules, cross-document diff, and agent routing.
 - `docs/demo_walkthrough.md`: repeatable demo flow.
 
 ## RAG Design

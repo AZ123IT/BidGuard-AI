@@ -35,7 +35,7 @@ Open `http://localhost:3000`.
 
 ## Final Demo Script
 
-Use this sequence for a short interview demo. Commands assume you start from the repository root unless a step says otherwise.
+Use this sequence for a short end-to-end demo. Commands assume you start from the repository root unless a step says otherwise.
 
 1. Start the backend.
 2. Start the frontend.
@@ -162,7 +162,7 @@ This runs backend tests, Ruff, provider smoke, smoke eval, the 36-case demo eval
 
 ## Validate Providers
 
-Local mode is the default interview-safe mode:
+Local mode is the default zero-key mode:
 
 ```bash
 cd backend
@@ -239,7 +239,7 @@ python3 scripts/verify_all.py --with-pgvector
 6. Compare: compare `demo_contract_draft` with `demo_contract_revised`.
 7. Agent Trace: run a normal evidence question, a risk review request, and a compare request; inspect tool calls.
 
-## Interview Metrics To Mention
+## Metrics Reported
 
 - Retrieval hit and evidence page hit for answerable Q&A.
 - Recall@1/3/5, MRR, and nDCG@5 from the retrieval challenge.

@@ -5,6 +5,11 @@
 **Evidence-first tender and contract review. Answers linked to source text, with risk checks and an inspectable tool trace.**
 
 [![CI](https://github.com/AZ123IT/BidGuard-AI/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/AZ123IT/BidGuard-AI/actions/workflows/ci.yml)
+![Python](https://img.shields.io/badge/Python-3.11+-3776AB?logo=python&logoColor=white)
+![FastAPI](https://img.shields.io/badge/FastAPI-009688?logo=fastapi&logoColor=white)
+![Next.js](https://img.shields.io/badge/Next.js-000000?logo=nextdotjs&logoColor=white)
+![pgvector](https://img.shields.io/badge/PostgreSQL-pgvector-4169E1?logo=postgresql&logoColor=white)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 [Demo walkthrough](docs/demo_walkthrough.md) · [Architecture](docs/architecture.md) · [Evaluation & failures](docs/evaluation_failure_analysis.md)
 
@@ -110,11 +115,11 @@ Two separate datasets serve different purposes:
 
 Recorded comparison from **2026-07-10**, on the same small synthetic retrieval set:
 
-| Retrieval configuration | Recall@5 | MRR | Mean retrieval latency |
-| --- | ---: | ---: | ---: |
-| Keyword baseline | 56.3% | 0.52 | 0.16 ms |
-| Local deterministic fallback, 64 dimensions | 56.3% | 0.52 | 0.19 ms |
-| pgvector + Ollama semantic embeddings, 64 dimensions | 68.8% | 0.63 | 98.11 ms |
+| Retrieval configuration | Recall@5 | MRR | nDCG@5 | Evidence page hit | Mean retrieval latency |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Keyword baseline | 56.3% | 0.52 | 0.53 | 56.3% | 0.16 ms |
+| Local deterministic fallback, 64 dimensions | 56.3% | 0.52 | 0.53 | 56.3% | 0.19 ms |
+| pgvector + Ollama semantic embeddings, 64 dimensions | **68.8%** | **0.63** | **0.64** | **68.8%** | 98.11 ms |
 
 The semantic-vector configuration retrieved the expected evidence for **11/16 cases versus 9/16** for the keyword baseline. This compares complete retrieval configurations, not a speed or quality gain caused by pgvector alone.
 
@@ -183,7 +188,6 @@ This also starts the Compose PostgreSQL service, runs pgvector smoke, and stops 
 | [Agent workflow](docs/agent_workflow.md) | Tool selection, evidence checks, and trace behavior |
 | [Evaluation design](docs/evaluation_plan.md) / [Failure analysis](docs/evaluation_failure_analysis.md) | Coverage, metrics, observed weaknesses, and reproducible experiments |
 | [Real-provider demo](docs/real_provider_demo.md) | Optional semantic embedding and LLM validation |
-| [Interview brief](docs/interview_brief.md) / [中文学习手册](docs/system_learning_cn.md) | Project explanation, engineering trade-offs, and interview preparation |
 | [Documentation index](docs/README.md) / [Release notes](docs/release_notes_v0_1.md) | Additional guides and release scope |
 
 ## Boundaries And Next Steps
@@ -193,3 +197,7 @@ This is a single-user portfolio project, not a hosted enterprise service. Risk c
 Next priorities are broader, independently labeled evaluation data, improved clause extraction, and retrieval changes justified by measured failures. OCR and PDF highlighting remain future work. See the [roadmap](docs/development_roadmap.md).
 
 Only public or synthetic documents should be used for demonstrations. Keep API keys, local databases, uploads, and generated reports out of Git.
+
+## License
+
+[MIT](LICENSE)
